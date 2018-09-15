@@ -43,7 +43,7 @@ void wfvbi(void) {
 
 int rand(void) {
 	rand_seed = (rand_seed * 1103515245) + 12345;
-	return rand_seed;
+	return rand_seed % RAND_MAX;
 }
 
 void srand(unsigned int seed) {

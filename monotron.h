@@ -9,3 +9,4 @@ int rand(void);
 void srand(unsigned int seed);
 
 #define NULL ((void*) 0)
+#define RAND_MAX 32768
