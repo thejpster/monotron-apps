@@ -14,6 +14,8 @@ typedef int32_t(*entry_point_t)(const struct callbacks_t*);
 const struct callbacks_t* p_callbacks;
 void* p_context;
 
+static unsigned int rand_seed = 0;
+
 int32_t entry(const struct callbacks_t* callbacks) {
 	p_callbacks = callbacks;
 	return main();
@@ -30,13 +32,22 @@ int puts(const char* s) {
 }
 
 /* Blocking character read from stdin. Returns a char or EOF */
-int readc(void) {
+int getchar(void) {
 	return p_callbacks->readc(p_callbacks->p_context);
 }
 
 /* Wait For Vertical Blanking Interval. */
 void wfvbi(void) {
 	p_callbacks->wfvbi(p_callbacks->p_context);
+}
+
+int rand(void) {
+	rand_seed = (rand_seed * 1103515245) + 12345;
+	return rand_seed;
+}
+
+void srand(unsigned int seed) {
+	rand_seed = seed;
 }
 
 __attribute__ ((section(".entry_point")))
