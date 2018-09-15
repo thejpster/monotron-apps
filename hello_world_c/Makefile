@@ -1,4 +1,4 @@
-CFLAGS = -fno-builtin  -mcpu=cortex-m4 -nostartfiles -nostdlib -mthumb -Wall -Os -Werror -I..
+CFLAGS = -fno-builtin  -mcpu=cortex-m4 -std=c11 -nostartfiles -nostdlib -mthumb -Wall -Os -Werror -I..
 CC = arm-none-eabi-gcc
 OUT_DIR = ./bin
 SOURCES = main.c ../lib.c
