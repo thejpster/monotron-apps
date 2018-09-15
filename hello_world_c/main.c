@@ -1,6 +1,7 @@
 #include <monotron.h>
 
-int main(const struct callbacks_t* p_callbacks) {
-	p_callbacks->puts("Hello from RAM!\n");
+int main(void) {
+	puts("Hello from RAM!\n");
+	puts("This is a \x1BRRed\x1BW text on a new line.\n");
 	return 1;
 }

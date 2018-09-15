@@ -1,12 +1,11 @@
 typedef int(*puts_t)(const char*);
-typedef int(*putc_t)(int ch);
+typedef int(*putc_t)(char ch);
 struct callbacks_t {
-	putc_t putc;
+	putc_t putchar;
 	puts_t puts;
 };
 typedef int(*entry_point_t)(const struct callbacks_t*);
 
-int main(const struct callbacks_t* p_callbacks);
-
-__attribute__ ((section(".entry_point")))
-static const entry_point_t entry_point = main;
+int main(void);
+int putchar(char ch);
+int puts(const char* s);
