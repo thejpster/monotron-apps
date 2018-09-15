@@ -2,11 +2,12 @@
 #include <stdint.h>
 
 struct callbacks_t {
+	void* p_context;
 	int32_t(*putchar)(void* p_context, char ch);
 	int32_t(*puts)(void* p_context, const char*);
 	int32_t(*readc)(void* p_context);
 	void(*wfvbi)(void* p_context);
-	void* p_context;
+	int32_t(*kbhit)(void* p_context);
 };
 
 typedef int32_t(*entry_point_t)(const struct callbacks_t*);
@@ -34,6 +35,11 @@ int puts(const char* s) {
 /* Blocking character read from stdin. Returns a char or EOF */
 int getchar(void) {
 	return p_callbacks->readc(p_callbacks->p_context);
+}
+
+/* Blocking character read from stdin. Returns a char or EOF */
+int kbhit(void) {
+	return p_callbacks->kbhit(p_callbacks->p_context);
 }
 
 /* Wait For Vertical Blanking Interval. */
