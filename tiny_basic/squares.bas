@@ -1,0 +1,8 @@
+NEW
+10 LET X = 1
+20 PRINT X * X
+30 LET X = X + 1
+40 IF X < 10 GOTO 20
+RUN
+
+
