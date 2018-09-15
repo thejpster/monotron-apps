@@ -1,22 +1,38 @@
-CFLAGS = -fno-builtin  -mcpu=cortex-m4 -nostartfiles -nostdlib -mthumb
+CFLAGS = -fno-builtin  -mcpu=cortex-m4 -nostartfiles -nostdlib -mthumb -Wall -Os -Werror -I..
+CC = arm-none-eabi-gcc
+OUT_DIR = ./bin
+SOURCES = main.c ../lib.c
+OBJECTS = $(OUT_DIR)/main.o $(OUT_DIR)/lib.o
+MKDIR_P = mkdir -p
 
-all: app.bin
+all: directories $(OUT_DIR)/app.bin
 
 clean:
-	-rm -f app app.bin
+	-rm -fr $(OUT_DIR)
 
 rebuild: clean all
 
-app.bin: app
-	arm-none-eabi-objcopy -O binary ./app ./app.bin
+$(OUT_DIR)/app.bin: $(OUT_DIR)/app
+	arm-none-eabi-objcopy -O binary $^ $@
 
-app: main.o lib.o ../monotron-app.ld ../monotron.h
-	arm-none-eabi-gcc ${CFLAGS} -T ../monotron-app.ld -o app main.o lib.o
+$(OUT_DIR)/app: $(OUT_DIR)/main.o $(OUT_DIR)/lib.o
+	arm-none-eabi-gcc $(CFLAGS) -T ../monotron-app.ld -o $@ $^
 
-main.o: main.c
-	arm-none-eabi-gcc ${CFLAGS} -I .. -o main.o -c main.c
+$(OUT_DIR)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-lib.o: ../lib.c
-	arm-none-eabi-gcc ${CFLAGS} -I .. -o lib.o -c ../lib.c
+$(OUT_DIR)/%.o: ../%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY = clean rebuild all
+$(OUT_DIR)/main.o: main.c
+
+$(OUT_DIR)/lib.o: ../lib.c
+
+$(OBJECTS): Makefile ../monotron-app.ld ../monotron.h
+
+directories: $(OUT_DIR)
+
+$(OUT_DIR):
+	$(MKDIR_P) $(OUT_DIR)
+
+.PHONY: directories clean rebuild all
