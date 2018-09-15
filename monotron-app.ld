@@ -13,6 +13,10 @@ SECTIONS
         *    (.fini)
         *    (.rodata .rodata.*)
         *    (.data .data.*)
+    }
+
+    .bss (NOLOAD) :
+    {
         *    (.bss .bss.*)
     }
 }
