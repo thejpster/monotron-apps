@@ -742,7 +742,7 @@ static void getln(char prompt)
         break;
       txtpos--;
 
-      printmsg(backspacemsg);
+      printmsgNoNL(backspacemsg);
       break;
     default:
       // We need to leave at least one space to allow us to shuffle the line into order
@@ -2090,6 +2090,9 @@ static unsigned char breakcheck(void)
     return getch() == CTRLC;
   else
 #endif
+    if (kbhit()) {
+      return getchar() == CTRLC;
+    }
     return 0;
 #endif
 }
