@@ -53,7 +53,10 @@
 //    down the whole thing so we can get back to implementing
 //    features instead of licenses.  Thank you for your time.
 
-#define kVersion "v0.15"
+#define kVersion "v1.0"
+
+// v1.0: 2018-09-16
+//      Ported to Monotron. Removed Arduino support.
 
 // v0.15: 2018-06-23
 //      Integrating some contributions
@@ -132,141 +135,11 @@
 // IF testing with Visual C, this needs to be the first thing in the file.
 //#include "stdafx.h"
 
+#include <stdbool.h>
 #include <monotron.h>
-#undef ARDUINO
 
-////////////////////////////////////////////////////////////////////////////////
-// Feature option configuration...
-
-// This enables LOAD, SAVE, FILES commands through the Arduino SD Library
-// it adds 9k of usage as well.
-//#define ENABLE_FILEIO 1
-#undef ENABLE_FILEIO
-
-// this turns on "autorun".  if there's FileIO, and a file "autorun.bas",
-// then it will load it and run it when starting up
-//#define ENABLE_AUTORUN 1
-#undef ENABLE_AUTORUN
-// and this is the file that gets run
-#define kAutorunFilename  "autorun.bas"
-
-// this is the alternate autorun.  Autorun the program in the eeprom.
-// it will load whatever is in the EEProm and run it
-#define ENABLE_EAUTORUN 1
-//#undef ENABLE_EAUTORUN
-
-// this will enable the "TONE", "NOTONE" command using a piezo
-// element on the specified pin.  Wire the red/positive/piezo to the kPiezoPin,
-// and the black/negative/metal disc to ground.
-// it adds 1.5k of usage as well.
-//#define ENABLE_TONES 1
-#undef ENABLE_TONES
-#define kPiezoPin 5
-
-// we can use the EEProm to store a program during powerdown.  This is
-// 1kbyte on the '328, and 512 bytes on the '168.  Enabling this here will
-// allow for this funcitonality to work.  Note that this only works on AVR
-// arduino.  Disable it for DUE/other devices.
-#define ENABLE_EEPROM 1
-//#undef ENABLE_EEPROM
-
-// Sometimes, we connect with a slower device as the console.
-// Set your console D0/D1 baud rate here (9600 baud default)
-#define kConsoleBaud 9600
-
-
-////////////////////////////////////////////////////////////////////////////////
-// fixes for RAMEND on some platforms
-#ifndef RAMEND
-  // RAMEND is defined for Uno type Arduinos
-  #ifdef ARDUINO
-    // probably DUE or 8266?
-    #ifdef ESP8266
-      #define RAMEND (8192-1)
-    #else
-      // probably DUE - ARM rather than AVR
-      #define RAMEND (4096-1)
-    #endif
-  #endif
-#endif
-
-
-// Enable memory alignment for certain processers (e.g. some ESP8266-based devices)
-#ifdef ESP8266
-  // Uses up to one extra byte per program line of memory
-  #define ALIGN_MEMORY 1
-#else
-  #undef ALIGN_MEMORY
-#endif
-
-#ifndef ARDUINO
-  // not an arduino, so we can disable these features.
-  // turn off EEProm
-  #undef ENABLE_EEPROM
-  #undef ENABLE_TONES
-#endif
-
-
-// includes, and settings for Arduino-specific features
-#ifdef ARDUINO
-
-  // EEPROM
-  #ifdef ENABLE_EEPROM
-    #include <EEPROM.h>  /* NOTE: case sensitive */
-    int eepos = 0;
-  #endif
-
-  // SD card File io
-  #ifdef ENABLE_FILEIO
-    #include <SD.h>
-    #include <SPI.h> /* needed as of 1.5 beta */
-
-    // set this to the card select for your Arduino SD shield
-    #define kSD_CS 10
-
-    #define kSD_Fail  0
-    #define kSD_OK    1
-
-    File fp;
-  #endif
-
-  // set up our RAM buffer size for program and user input
-  // NOTE: This number will have to change if you include other libraries.
-  //       It is also an estimation.  Might require adjustments...
-  #ifdef ENABLE_FILEIO
-    #define kRamFileIO (1030) /* approximate */
-  #else
-    #define kRamFileIO (0)
-  #endif
-
-  #ifdef ENABLE_TONES
-    #define kRamTones (40)
-  #else
-    #define kRamTones (0)
-  #endif
-
-  #define kRamSize  (RAMEND - 1160 - kRamFileIO - kRamTones)
-
-#endif /* ARDUINO Specifics */
-
-
-// set up file includes for things we need, or desktop specific stuff.
-
-#ifdef ARDUINO
-  // Use pgmspace/PROGMEM directive to store strings in progmem to save RAM
-  #include <avr/pgmspace.h>
-#else
-  // #include <stdio.h>
-  // #include <stdlib.h>
-  #undef ENABLE_TONES
-
-  // size of our program ram
-  #define kRamSize   20*1024 /* arbitrary - not dependant on libraries */
-
-  #ifdef ENABLE_FILEIO
-    FILE * fp;
-  #endif
-#endif
+// size of our program ram
+#define kRamSize   20*1024 /* All that fits in Monotron's 24 KiB usable SRAM */
 
 ////////////////////
 
@@ -283,40 +156,16 @@
 
 
 ////////////////////
-// various other desktop-tweaks and such.
-
-#ifndef boolean
-  #define boolean int
-  #define true 1
-  #define false 0
-#endif
 
 #ifndef byte
   typedef unsigned char byte;
 #endif
 
-// some catches for AVR based text string stuff...
-#ifndef PROGMEM
-  #define PROGMEM
-#endif
-#ifndef pgm_read_byte
-  #define pgm_read_byte( A ) *(A)
-#endif
-
 ////////////////////
 
-#ifdef ENABLE_FILEIO
-  // functions defined elsehwere
-  void cmd_Files( void );
-  unsigned char * filenameWord(void);
-  static boolean sd_is_initialized = false;
-#endif
-
-// some settings based things
-
-boolean inhibitOutput = false;
-static boolean runAfterLoad = false;
-static boolean triggerRun = false;
+bool inhibitOutput = false;
+static bool runAfterLoad = false;
+static bool triggerRun = false;
 
 // these will select, at runtime, where IO happens through for load/save
 enum {
@@ -344,12 +193,7 @@ enum {
 #define CTRLX	0x18
 
 typedef short unsigned LINENUM;
-#ifdef ARDUINO
-#define ECHO_CHARS 1
-#else
 #define ECHO_CHARS 0
-#endif
-
 
 static unsigned char program[kRamSize];
 // static const char *  sentinel = "HELLO";
@@ -359,7 +203,7 @@ static unsigned char *tempsp;
 
 /***********************************************************/
 // Keyword table and constants - the last character has 0x80 added to it
-const static unsigned char keywords[] PROGMEM = {
+const static unsigned char keywords[]  = {
   'L','I','S','T'+0x80,
   'L','O','A','D'+0x80,
   'N','E','W'+0x80,
@@ -388,20 +232,6 @@ const static unsigned char keywords[] PROGMEM = {
   'E','N','D'+0x80,
   'R','S','E','E','D'+0x80,
   'C','H','A','I','N'+0x80,
-#ifdef ENABLE_TONES
-  'T','O','N','E','W'+0x80,
-  'T','O','N','E'+0x80,
-  'N','O','T','O','N','E'+0x80,
-#endif
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-  'E','C','H','A','I','N'+0x80,
-  'E','L','I','S','T'+0x80,
-  'E','L','O','A','D'+0x80,
-  'E','F','O','R','M','A','T'+0x80,
-  'E','S','A','V','E'+0x80,
-#endif
-#endif
   0
 };
 
@@ -425,14 +255,6 @@ enum {
   KW_END,
   KW_RSEED,
   KW_CHAIN,
-#ifdef ENABLE_TONES
-  KW_TONEW, KW_TONE, KW_NOTONE,
-#endif
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-  KW_ECHAIN, KW_ELIST, KW_ELOAD, KW_EFORMAT, KW_ESAVE,
-#endif
-#endif
   KW_DEFAULT /* always the final one*/
 };
 
@@ -451,7 +273,7 @@ struct stack_gosub_frame {
   unsigned char *txtpos;
 };
 
-const static unsigned char func_tab[] PROGMEM = {
+const static unsigned char func_tab[]  = {
   'P','E','E','K'+0x80,
   'A','B','S'+0x80,
   'A','R','E','A','D'+0x80,
@@ -466,17 +288,17 @@ const static unsigned char func_tab[] PROGMEM = {
 #define FUNC_RND     4
 #define FUNC_UNKNOWN 5
 
-const static unsigned char to_tab[] PROGMEM = {
+const static unsigned char to_tab[]  = {
   'T','O'+0x80,
   0
 };
 
-const static unsigned char step_tab[] PROGMEM = {
+const static unsigned char step_tab[]  = {
   'S','T','E','P'+0x80,
   0
 };
 
-const static unsigned char relop_tab[] PROGMEM = {
+const static unsigned char relop_tab[]  = {
   '>','='+0x80,
   '<','>'+0x80,
   '>'+0x80,
@@ -496,7 +318,7 @@ const static unsigned char relop_tab[] PROGMEM = {
 #define RELOP_NE_BANG		6
 #define RELOP_UNKNOWN	7
 
-// const static unsigned char highlow_tab[] PROGMEM = {
+// const static unsigned char highlow_tab[]  = {
 //   'H','I','G','H'+0x80,
 //   'H','I'+0x80,
 //   'L','O','W'+0x80,
@@ -521,33 +343,39 @@ static unsigned char *sp;
 static unsigned char table_index;
 static LINENUM linenum;
 
-static const unsigned char okmsg[]            PROGMEM = "OK";
-static const unsigned char whatmsg[]          PROGMEM = "What? ";
-static const unsigned char howmsg[]           PROGMEM =	"How?";
-static const unsigned char sorrymsg[]         PROGMEM = "Sorry!";
-static const unsigned char initmsg[]          PROGMEM = "TinyBasic Plus " kVersion;
-static const unsigned char memorymsg[]        PROGMEM = " bytes free.";
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-static const unsigned char eeprommsg[]        PROGMEM = " EEProm bytes total.";
-static const unsigned char eepromamsg[]       PROGMEM = " EEProm bytes available.";
-#endif
-#endif
-static const unsigned char breakmsg[]         PROGMEM = "break!";
-static const unsigned char unimplimentedmsg[] PROGMEM = "Unimplemented";
-static const unsigned char backspacemsg[]     PROGMEM = "\b \b";
-// static const unsigned char indentmsg[]        PROGMEM = "    ";
-// static const unsigned char sderrormsg[]       PROGMEM = "SD card error.";
-// static const unsigned char sdfilemsg[]        PROGMEM = "SD file error.";
-// static const unsigned char dirextmsg[]        PROGMEM = "(dir)";
-// static const unsigned char slashmsg[]         PROGMEM = "/";
-// static const unsigned char spacemsg[]         PROGMEM = " ";
+static const unsigned char okmsg[]             = "OK";
+static const unsigned char whatmsg[]           = "What? ";
+static const unsigned char howmsg[]            = "How?";
+static const unsigned char sorrymsg[]          = "Sorry!";
+static const unsigned char initmsg[]           = "TinyBasic Plus for Monotron " kVersion;
+static const unsigned char memorymsg[]         = " bytes free.";
+static const unsigned char breakmsg[]          = "break!";
+static const unsigned char unimplimentedmsg[]  = "Unimplemented";
+static const unsigned char backspacemsg[]      = "\b \b";
 
-static int inchar(void);
-static void outchar(unsigned char c);
-static void line_terminator(void);
+static void ignore_blanks(void);
+static void scantable(const unsigned char *table);
+static void pushb(unsigned char b);
+static unsigned char popb();
+static void printnum(int num);
+static unsigned short testnum(void);
+static unsigned char print_quoted_string(void);
+static void printmsgNoNL(const unsigned char *msg);
+static void printmsg(const unsigned char *msg);
+static void getln(char prompt);
+static unsigned char *findline(void);
+static void toUppercaseBuffer(void);
+static void printline();
+static short int expr4(void);
+static short int expr3(void);
+static short int expr2(void);
 static short int expression(void);
+static void line_terminator(void);
 static unsigned char breakcheck(void);
+static int inchar();
+static void outchar(unsigned char c);
+
+
 /***************************************************************************/
 static void ignore_blanks(void)
 {
@@ -564,11 +392,11 @@ static void scantable(const unsigned char *table)
   while(1)
   {
     // Run out of table entries?
-    if(pgm_read_byte( table ) == 0)
+    if(*table == 0)
       return;
 
     // Do we match this character?
-    if(txtpos[i] == pgm_read_byte( table ))
+    if(txtpos[i] == *table)
     {
       i++;
       table++;
@@ -576,7 +404,7 @@ static void scantable(const unsigned char *table)
     else
     {
       // do we match the last character of keywork (with 0x80 added)? If so, return
-      if(txtpos[i]+0x80 == pgm_read_byte( table ))
+      if(txtpos[i]+0x80 == *table)
       {
         txtpos += i+1;  // Advance the pointer to following the keyword
         ignore_blanks();
@@ -584,7 +412,7 @@ static void scantable(const unsigned char *table)
       }
 
       // Forward to the end of this keyword
-      while((pgm_read_byte( table ) & 0x80) == 0)
+      while((*table & 0x80) == 0)
         table++;
 
       // Now move on to the first character of the next word, and reset the position index
@@ -613,7 +441,7 @@ static unsigned char popb()
 }
 
 /***************************************************************************/
-void printnum(int num)
+static void printnum(int num)
 {
   int digits = 0;
 
@@ -705,15 +533,15 @@ static unsigned char print_quoted_string(void)
 
 
 /***************************************************************************/
-void printmsgNoNL(const unsigned char *msg)
+static void printmsgNoNL(const unsigned char *msg)
 {
-  while( pgm_read_byte( msg ) != 0 ) {
-    outchar( pgm_read_byte( msg++ ) );
-  };
+  while(*msg != 0) {
+    outchar(*msg++);
+  }
 }
 
 /***************************************************************************/
-void printmsg(const unsigned char *msg)
+static void printmsg(const unsigned char *msg)
 {
   printmsgNoNL(msg);
   line_terminator();
@@ -795,7 +623,7 @@ static void toUppercaseBuffer(void)
 }
 
 /***************************************************************************/
-void printline()
+static void printline()
 {
   LINENUM line_num;
 
@@ -886,21 +714,8 @@ static short int expr4(void)
         return -a;
       return a;
 
-#ifdef ARDUINO
-    case FUNC_AREAD:
-      pinMode( a, INPUT );
-      return analogRead( a );
-    case FUNC_DREAD:
-      pinMode( a, INPUT );
-      return digitalRead( a );
-#endif
-
     case FUNC_RND:
-#ifdef ARDUINO
-      return( random( a ));
-#else
       return( rand() % a );
-#endif
     }
   }
 
@@ -981,6 +796,7 @@ static short int expr2(void)
       return a;
   }
 }
+
 /***************************************************************************/
 static short int expression(void)
 {
@@ -1027,17 +843,13 @@ static short int expression(void)
 }
 
 /***************************************************************************/
-void loop()
+int main(void)
 {
   unsigned char *start;
   unsigned char *newEnd;
   unsigned char linelen;
 
-#ifdef ARDUINO
-#ifdef ENABLE_TONES
-  noTone( kPiezoPin );
-#endif
-#endif
+  printmsg(initmsg);
 
   program_start = program;
   program_end = program_start;
@@ -1054,13 +866,6 @@ void loop()
   // memory free
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-  // eprom size
-  printnum( E2END+1 );
-  printmsg( eeprommsg );
-#endif /* ENABLE_EEPROM */
-#endif /* ARDUINO */
 
 warmstart:
   // this signifies that it is running in 'direct' mode.
@@ -1256,17 +1061,7 @@ interperateAtTxtpos:
   switch(table_index)
   {
   case KW_DELAY:
-    {
-#ifdef ARDUINO
-      expression_error = 0;
-      val = expression();
-      delay( val );
-      goto execnextline;
-#else
-      goto unimplemented;
-#endif
-    }
-
+    goto unimplemented;
   case KW_FILES:
     goto files;
   case KW_LIST:
@@ -1335,7 +1130,7 @@ interperateAtTxtpos:
     goto execline;
   case KW_BYE:
     // Leave the basic interperater
-    return;
+    return 0;
 
   case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
     goto awrite;
@@ -1344,29 +1139,6 @@ interperateAtTxtpos:
 
   case KW_RSEED:
     goto rseed;
-
-#ifdef ENABLE_TONES
-  case KW_TONEW:
-  case KW_TONE:
-    goto tonegen;
-  case KW_NOTONE:
-    goto tonestop;
-#endif
-
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-  case KW_EFORMAT:
-    goto eformat;
-  case KW_ESAVE:
-    goto esave;
-  case KW_ELOAD:
-    goto eload;
-  case KW_ELIST:
-    goto elist;
-  case KW_ECHAIN:
-    goto echain;
-#endif
-#endif
 
   case KW_DEFAULT:
     goto assignment;
@@ -1384,74 +1156,6 @@ execline:
     goto warmstart;
   txtpos = current_line+sizeof(LINENUM)+sizeof(char);
   goto interperateAtTxtpos;
-
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-elist:
-  {
-    int i;
-    for( i = 0 ; i < (E2END +1) ; i++ )
-    {
-      val = EEPROM.read( i );
-
-      if( val == '\0' ) {
-        goto execnextline;
-      }
-
-      if( ((val < ' ') || (val  > '~')) && (val != NL) && (val != CR))  {
-        outchar( '?' );
-      }
-      else {
-        outchar( val );
-      }
-    }
-  }
-  goto execnextline;
-
-eformat:
-  {
-    for( int i = 0 ; i < E2END ; i++ )
-    {
-      if( (i & 0x03f) == 0x20 ) outchar( '.' );
-      EEPROM.write( i, 0 );
-    }
-    outchar( LF );
-  }
-  goto execnextline;
-
-esave:
-  {
-    outStream = kStreamEEProm;
-    eepos = 0;
-
-    // copied from "List"
-    list_line = findline();
-    while(list_line != program_end) {
-      printline();
-    }
-    outchar('\0');
-
-    // go back to standard output, close the file
-    outStream = kStreamSerial;
-
-    goto warmstart;
-  }
-
-
-echain:
-  runAfterLoad = true;
-
-eload:
-  // clear the program
-  program_end = program_start;
-
-  // load from a file into memory
-  eepos = 0;
-  inStream = kStreamEEProm;
-  inhibitOutput = true;
-  goto warmstart;
-#endif /* ENABLE_EEPROM */
-#endif
 
 input:
   {
@@ -1743,98 +1447,20 @@ mem:
   // memory free
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
-#ifdef ARDUINO
-#ifdef ENABLE_EEPROM
-  {
-    // eprom size
-    printnum( E2END+1 );
-    printmsg( eeprommsg );
-
-    // figure out the memory usage;
-    val = ' ';
-    int i;
-    for( i=0 ; (i<(E2END+1)) && (val != '\0') ; i++ ) {
-      val = EEPROM.read( i );
-    }
-    printnum( (E2END +1) - (i-1) );
-
-    printmsg( eepromamsg );
-  }
-#endif /* ENABLE_EEPROM */
-#endif /* ARDUINO */
   goto run_next_statement;
 
 
   /*************************************************/
 
-#ifdef ARDUINO
-awrite: // AWRITE <pin>,val
-dwrite:
-  {
-    short int pinNo;
-    short int value;
-    unsigned char *txtposBak;
-
-    // Get the pin number
-    expression_error = 0;
-    pinNo = expression();
-    if(expression_error)
-      goto qwhat;
-
-    // check for a comma
-    ignore_blanks();
-    if (*txtpos != ',')
-      goto qwhat;
-    txtpos++;
-    ignore_blanks();
-
-
-    txtposBak = txtpos;
-    scantable(highlow_tab);
-    if(table_index != HIGHLOW_UNKNOWN)
-    {
-      if( table_index <= HIGHLOW_HIGH ) {
-        value = 1;
-      }
-      else {
-        value = 0;
-      }
-    }
-    else {
-
-      // and the value (numerical)
-      expression_error = 0;
-      value = expression();
-      if(expression_error)
-        goto qwhat;
-    }
-    pinMode( pinNo, OUTPUT );
-    if( isDigital ) {
-      digitalWrite( pinNo, value );
-    }
-    else {
-      analogWrite( pinNo, value );
-    }
-  }
-  goto run_next_statement;
-#else
 awrite: // AWRITE <pin>,val
 dwrite:
   goto unimplemented;
-#endif
 
   /*************************************************/
 files:
   // display a listing of files on the device.
   // version 1: no support for subdirectories
-
-#ifdef ENABLE_FILEIO
-    cmd_Files();
-  goto warmstart;
-#else
   goto unimplemented;
-#endif // ENABLE_FILEIO
-
 
 chain:
   runAfterLoad = true;
@@ -1843,81 +1469,11 @@ load:
   // clear the program
   program_end = program_start;
 
-  // load from a file into memory
-#ifdef ENABLE_FILEIO
-  {
-    unsigned char *filename;
-
-    // Work out the filename
-    expression_error = 0;
-    filename = filenameWord();
-    if(expression_error)
-      goto qwhat;
-
-#ifdef ARDUINO
-    // Arduino specific
-    if( !SD.exists( (char *)filename ))
-    {
-      printmsg( sdfilemsg );
-    }
-    else {
-
-      fp = SD.open( (const char *)filename );
-      inStream = kStreamFile;
-      inhibitOutput = true;
-    }
-#else // ARDUINO
-    // Desktop specific
-#endif // ARDUINO
-    // this will kickstart a series of events to read in from the file.
-
-  }
-  goto warmstart;
-#else // ENABLE_FILEIO
   goto unimplemented;
-#endif // ENABLE_FILEIO
-
-
 
 save:
   // save from memory out to a file
-#ifdef ENABLE_FILEIO
-  {
-    unsigned char *filename;
-
-    // Work out the filename
-    expression_error = 0;
-    filename = filenameWord();
-    if(expression_error)
-      goto qwhat;
-
-#ifdef ARDUINO
-    // remove the old file if it exists
-    if( SD.exists( (char *)filename )) {
-      SD.remove( (char *)filename );
-    }
-
-    // open the file, switch over to file output
-    fp = SD.open( (const char *)filename, FILE_WRITE );
-    outStream = kStreamFile;
-
-    // copied from "List"
-    list_line = findline();
-    while(list_line != program_end)
-      printline();
-
-    // go back to standard output, close the file
-    outStream = kStreamSerial;
-
-    fp.close();
-#else // ARDUINO
-    // desktop
-#endif // ARDUINO
-    goto warmstart;
-  }
-#else // ENABLE_FILEIO
   goto unimplemented;
-#endif // ENABLE_FILEIO
 
 rseed:
   {
@@ -1929,99 +1485,9 @@ rseed:
     if(expression_error)
       goto qwhat;
 
-#ifdef ARDUINO
-    randomSeed( value );
-#else // ARDUINO
     srand( value );
-#endif // ARDUINO
     goto run_next_statement;
   }
-
-#ifdef ENABLE_TONES
-tonestop:
-  noTone( kPiezoPin );
-  goto run_next_statement;
-
-tonegen:
-  {
-    // TONE freq, duration
-    // if either are 0, tones turned off
-    short int freq;
-    short int duration;
-
-    //Get the frequency
-    expression_error = 0;
-    freq = expression();
-    if(expression_error)
-      goto qwhat;
-
-    ignore_blanks();
-    if (*txtpos != ',')
-      goto qwhat;
-    txtpos++;
-    ignore_blanks();
-
-
-    //Get the duration
-    expression_error = 0;
-    duration = expression();
-    if(expression_error)
-      goto qwhat;
-
-    if( freq == 0 || duration == 0 )
-      goto tonestop;
-
-    tone( kPiezoPin, freq, duration );
-    if( alsoWait ) {
-      delay( duration );
-      alsoWait = false;
-    }
-    goto run_next_statement;
-  }
-#endif /* ENABLE_TONES */
-}
-
-// returns 1 if the character is valid in a filename
-static int isValidFnChar( char c )
-{
-  if( c >= '0' && c <= '9' ) return 1; // number
-  if( c >= 'A' && c <= 'Z' ) return 1; // LETTER
-  if( c >= 'a' && c <= 'z' ) return 1; // letter (for completeness)
-  if( c == '_' ) return 1;
-  if( c == '+' ) return 1;
-  if( c == '.' ) return 1;
-  if( c == '~' ) return 1;  // Window~1.txt
-
-  return 0;
-}
-
-unsigned char * filenameWord(void)
-{
-  // SDL - I wasn't sure if this functionality existed above, so I figured i'd put it here
-  unsigned char * ret = txtpos;
-  expression_error = 0;
-
-  // make sure there are no quotes or spaces, search for valid characters
-  //while(*txtpos == SPACE || *txtpos == TAB || *txtpos == SQUOTE || *txtpos == DQUOTE ) txtpos++;
-  while( !isValidFnChar( *txtpos )) txtpos++;
-  ret = txtpos;
-
-  if( *ret == '\0' ) {
-    expression_error = 1;
-    return ret;
-  }
-
-  // now, find the next nonfnchar
-  txtpos++;
-  while( isValidFnChar( *txtpos )) txtpos++;
-  if( txtpos != ret ) *txtpos = '\0';
-
-  // set the error code if we've got no string
-  if( *ret == '\0' ) {
-    expression_error = 1;
-  }
-
-  return ret;
 }
 
 /***************************************************************************/
@@ -2031,239 +1497,26 @@ static void line_terminator(void)
   outchar(CR);
 }
 
-
-/***********************************************************/
-void setup()
-{
-#ifdef ARDUINO
-  Serial.begin(kConsoleBaud);	// opens serial port
-  while( !Serial ); // for Leonardo
-
-  Serial.println( sentinel );
-  printmsg(initmsg);
-
-#ifdef ENABLE_FILEIO
-  initSD();
-
-#ifdef ENABLE_AUTORUN
-  if( SD.exists( kAutorunFilename )) {
-    program_end = program_start;
-    fp = SD.open( kAutorunFilename );
-    inStream = kStreamFile;
-    inhibitOutput = true;
-    runAfterLoad = true;
-  }
-#endif /* ENABLE_AUTORUN */
-
-#endif /* ENABLE_FILEIO */
-
-#ifdef ENABLE_EEPROM
-#ifdef ENABLE_EAUTORUN
-  // read the first byte of the eeprom. if it's a number, assume it's a program we can load
-  int val = EEPROM.read(0);
-  if( val >= '0' && val <= '9' ) {
-    program_end = program_start;
-    inStream = kStreamEEProm;
-    eepos = 0;
-    inhibitOutput = true;
-    runAfterLoad = true;
-  }
-#endif /* ENABLE_EAUTORUN */
-#endif /* ENABLE_EEPROM */
-
-#else
-    puts((const char*) initmsg);
-#endif /* ARDUINO */
-}
-
-
 /***********************************************************/
 static unsigned char breakcheck(void)
 {
-#ifdef ARDUINO
-  if(Serial.available())
-    return Serial.read() == CTRLC;
-  return 0;
-#else
-#ifdef __CONIO__
-  if(kbhit())
-    return getch() == CTRLC;
-  else
-#endif
     if (kbhit()) {
       return getchar() == CTRLC;
     }
     return 0;
-#endif
 }
 /***********************************************************/
 static int inchar()
 {
-#ifdef ARDUINO
-
-  switch( inStream ) {
-  case( kStreamFile ):
-#ifdef ENABLE_FILEIO
-    v = fp.read();
-    if( v == NL ) v=CR; // file translate
-    if( !fp.available() ) {
-      fp.close();
-      goto inchar_loadfinish;
-    }
-    return v;
-#else
-#endif
-     break;
-  case( kStreamEEProm ):
-#ifdef ENABLE_EEPROM
-#ifdef ARDUINO
-    v = EEPROM.read( eepos++ );
-    if( v == '\0' ) {
-      goto inchar_loadfinish;
-    }
-    return v;
-#endif
-#else
-    inStream = kStreamSerial;
-    return NL;
-#endif
-     break;
-  case( kStreamSerial ):
-  default:
-    while(1)
-    {
-      if(Serial.available())
-        return Serial.read();
-    }
-  }
-
-inchar_loadfinish:
-  inStream = kStreamSerial;
-  inhibitOutput = false;
-
-  if( runAfterLoad ) {
-    runAfterLoad = false;
-    triggerRun = true;
-  }
-  return NL; // trigger a prompt.
-
-#else
-  // otherwise. desktop!
   int got = getchar();
-
   // translation for desktop systems
   if( got == LF ) got = CR;
-
   return got;
-#endif
 }
 
 /***********************************************************/
 static void outchar(unsigned char c)
 {
   if( inhibitOutput ) return;
-
-#ifdef ARDUINO
-  #ifdef ENABLE_FILEIO
-    if( outStream == kStreamFile ) {
-      // output to a file
-      fp.write( c );
-    }
-    else
-  #endif
-  #ifdef ARDUINO
-  #ifdef ENABLE_EEPROM
-    if( outStream == kStreamEEProm ) {
-      EEPROM.write( eepos++, c );
-    }
-    else
-  #endif /* ENABLE_EEPROM */
-  #endif /* ARDUINO */
-    Serial.write(c);
-
-#else
   putchar(c);
-#endif
-}
-
-/***********************************************************/
-/* SD Card helpers */
-
-#if ARDUINO && ENABLE_FILEIO
-
-static int initSD( void )
-{
-  // if the card is already initialized, we just go with it.
-  // there is no support (yet?) for hot-swap of SD Cards. if you need to
-  // swap, pop the card, reset the arduino.)
-
-  if( sd_is_initialized == true ) return kSD_OK;
-
-  // due to the way the SD Library works, pin 10 always needs to be
-  // an output, even when your shield uses another line for CS
-  pinMode(10, OUTPUT); // change this to 53 on a mega
-
-  if( !SD.begin( kSD_CS )) {
-    // failed
-    printmsg( sderrormsg );
-    return kSD_Fail;
-  }
-  // success - quietly return 0
-  sd_is_initialized = true;
-
-  // and our file redirection flags
-  outStream = kStreamSerial;
-  inStream = kStreamSerial;
-  inhibitOutput = false;
-
-  return kSD_OK;
-}
-#endif
-
-#if ENABLE_FILEIO
-void cmd_Files( void )
-{
-  File dir = SD.open( "/" );
-  dir.seek(0);
-
-  while( true ) {
-    File entry = dir.openNextFile();
-    if( !entry ) {
-      entry.close();
-      break;
-    }
-
-    // common header
-    printmsgNoNL( indentmsg );
-    printmsgNoNL( (const unsigned char *)entry.name() );
-    if( entry.isDirectory() ) {
-      printmsgNoNL( slashmsg );
-    }
-
-    if( entry.isDirectory() ) {
-      // directory ending
-      for( int i=strlen( entry.name()) ; i<16 ; i++ ) {
-        printmsgNoNL( spacemsg );
-      }
-      printmsgNoNL( dirextmsg );
-    }
-    else {
-      // file ending
-      for( int i=strlen( entry.name()) ; i<17 ; i++ ) {
-        printmsgNoNL( spacemsg );
-      }
-      printUnum( entry.size() );
-    }
-    line_terminator();
-    entry.close();
-  }
-  dir.close();
-}
-#endif
-
-int main(void) {
-  setup();
-  for(;;) {
-    loop();
-  }
 }
