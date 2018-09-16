@@ -232,6 +232,7 @@ const static unsigned char keywords[]  = {
     'E','N','D'+0x80,
     'R','S','E','E','D'+0x80,
     'C','H','A','I','N'+0x80,
+    'T','H','E','N'+0x80,
     0
 };
 
@@ -255,6 +256,7 @@ enum {
     KW_END,
     KW_RSEED,
     KW_CHAIN,
+    KW_THEN,
     KW_DEFAULT /* always the final one*/
 };
 
@@ -1029,6 +1031,8 @@ interperateAtTxtpos:
         goto gosub;
     case KW_RETURN:
         goto gosub_return;
+    case KW_THEN:
+        goto interperateAtTxtpos;
     case KW_REM:
     case KW_QUOTE:
         goto execnextline;	// Ignore line completely
