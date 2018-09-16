@@ -11,3 +11,4 @@ int kbhit(void);
 
 #define NULL ((void*) 0)
 #define RAND_MAX 32768
+#define FRAMES_PER_SECOND 60
