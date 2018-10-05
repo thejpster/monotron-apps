@@ -136,24 +136,54 @@
 //#include "stdafx.h"
 
 #include <stdbool.h>
+
+#ifdef PC_BUILD
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+int kbhit(void)
+{
+  struct termios oldt, newt;
+  int ch;
+  int oldf;
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+  ch = getchar();
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, oldf);
+  if(ch != EOF)
+  {
+    ungetc(ch, stdin);
+    return 1;
+  }
+  return 0;
+}
+#else
 #include <monotron.h>
+#endif
 
 // size of our program ram
 #define kRamSize   20*1024 /* All that fits in Monotron's 24 KiB usable SRAM */
 
 ////////////////////
 
-// memory alignment
-//  necessary for some esp8266-based devices
+// Required for ARM devices
+// #define ALIGN_MEMORY
 #ifdef ALIGN_MEMORY
-// Align memory addess x to an even page
-#define ALIGN_UP(x) ((unsigned char*)(((unsigned int)(x + 1) >> 1) << 1))
-#define ALIGN_DOWN(x) ((unsigned char*)(((unsigned int)x >> 1) << 1))
+#define ALIGN_UP(x) ((unsigned char*)(((intptr_t)((x) + 3) >> 1) << 1))
+#define ALIGN_DOWN(x) ((unsigned char*)(((intptr_t)(x) >> 1) << 1))
 #else
-#define ALIGN_UP(x) x
-#define ALIGN_DOWN(x) x
+#define ALIGN_UP(x) (x)
+#define ALIGN_DOWN(x) (x)
 #endif
-
 
 ////////////////////
 
@@ -163,19 +193,8 @@ typedef unsigned char byte;
 
 ////////////////////
 
-bool inhibitOutput = false;
-static bool runAfterLoad = false;
+static bool inhibitOutput = false;
 static bool triggerRun = false;
-
-// these will select, at runtime, where IO happens through for load/save
-enum {
-    kStreamSerial = 0,
-    kStreamEEProm,
-    kStreamFile
-};
-// static unsigned char inStream = kStreamSerial;
-// static unsigned char outStream = kStreamSerial;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // ASCII Characters
@@ -196,7 +215,6 @@ typedef short unsigned LINENUM;
 #define ECHO_CHARS 0
 
 static unsigned char program[kRamSize];
-// static const char *  sentinel = "HELLO";
 static unsigned char *txtpos,*list_line, *tmptxtpos;
 static unsigned char expression_error;
 static unsigned char *tempsp;
@@ -208,7 +226,6 @@ const static unsigned char keywords[]  = {
     'L','O','A','D'+0x80,
     'N','E','W'+0x80,
     'R','U','N'+0x80,
-    'S','A','V','E'+0x80,
     'N','E','X','T'+0x80,
     'L','E','T'+0x80,
     'I','F'+0x80,
@@ -222,17 +239,11 @@ const static unsigned char keywords[]  = {
     'P','O','K','E'+0x80,
     'S','T','O','P'+0x80,
     'B','Y','E'+0x80,
-    'F','I','L','E','S'+0x80,
     'M','E','M'+0x80,
+    'R','S','E','E','D'+0x80,
     '?'+ 0x80,
     '\''+ 0x80,
-    'A','W','R','I','T','E'+0x80,
-    'D','W','R','I','T','E'+0x80,
-    'D','E','L','A','Y'+0x80,
     'E','N','D'+0x80,
-    'R','S','E','E','D'+0x80,
-    'C','H','A','I','N'+0x80,
-    'T','H','E','N'+0x80,
     0
 };
 
@@ -240,23 +251,27 @@ const static unsigned char keywords[]  = {
 // above and below simultaneously to selectively obliterate functionality.
 enum {
     KW_LIST = 0,
-    KW_LOAD, KW_NEW, KW_RUN, KW_SAVE,
-    KW_NEXT, KW_LET, KW_IF,
-    KW_GOTO, KW_GOSUB, KW_RETURN,
+    KW_LOAD,
+    KW_NEW,
+    KW_RUN,
+    KW_NEXT,
+    KW_LET,
+    KW_IF,
+    KW_GOTO,
+    KW_GOSUB,
+    KW_RETURN,
     KW_REM,
     KW_FOR,
-    KW_INPUT, KW_PRINT,
+    KW_INPUT,
+    KW_PRINT,
     KW_POKE,
-    KW_STOP, KW_BYE,
-    KW_FILES,
+    KW_STOP,
+    KW_BYE,
     KW_MEM,
-    KW_QMARK, KW_QUOTE,
-    KW_AWRITE, KW_DWRITE,
-    KW_DELAY,
-    KW_END,
     KW_RSEED,
-    KW_CHAIN,
-    KW_THEN,
+    KW_QMARK,
+    KW_QUOTE,
+    KW_END,
     KW_DEFAULT /* always the final one*/
 };
 
@@ -341,7 +356,6 @@ static const unsigned char sorrymsg[]          = "Sorry!";
 static const unsigned char initmsg[]           = "TinyBasic Plus for Monotron " kVersion;
 static const unsigned char memorymsg[]         = " bytes free.";
 static const unsigned char breakmsg[]          = "break!";
-static const unsigned char unimplimentedmsg[]  = "Unimplemented";
 static const unsigned char backspacemsg[]      = "\b \b";
 
 static void ignore_blanks(void);
@@ -699,6 +713,13 @@ static short int expr3(void) {
             txtpos++;
             b = expr4();
             a *= b;
+        } else if(*txtpos == '%') {
+            txtpos++;
+            b = expr4();
+            if(b != 0)
+                a %= b;
+            else
+                expression_error = 1;
         } else if(*txtpos == '/') {
             txtpos++;
             b = expr4();
@@ -936,10 +957,6 @@ prompt:
     }
     goto prompt;
 
-unimplemented:
-    printmsg(unimplimentedmsg);
-    goto prompt;
-
 qhow:
     printmsg(howmsg);
     goto prompt;
@@ -980,19 +997,12 @@ interperateAtTxtpos:
         goto warmstart;
     }
 
+
     scantable(keywords);
 
     switch(table_index) {
-    case KW_DELAY:
-        goto unimplemented;
-    case KW_FILES:
-        goto files;
     case KW_LIST:
         goto list;
-    case KW_CHAIN:
-        goto chain;
-    case KW_LOAD:
-        goto load;
     case KW_MEM:
         goto mem;
     case KW_NEW:
@@ -1003,22 +1013,21 @@ interperateAtTxtpos:
     case KW_RUN:
         current_line = program_start;
         goto execline;
-    case KW_SAVE:
-        goto save;
     case KW_NEXT:
         goto next;
     case KW_LET:
         goto assignment;
-    case KW_IF: {
-        short int val;
-        expression_error = 0;
-        val = expression();
-        if(expression_error || *txtpos == NL)
-            goto qhow;
-        if(val != 0)
-            goto interperateAtTxtpos;
-        goto execnextline;
-    }
+    case KW_IF:
+        {
+            short int val;
+            expression_error = 0;
+            val = expression();
+            if(expression_error || *txtpos == NL)
+                goto qhow;
+            if(val != 0)
+                goto interperateAtTxtpos;
+            goto execnextline;
+        }
     case KW_GOTO:
         expression_error = 0;
         linenum = expression();
@@ -1026,13 +1035,10 @@ interperateAtTxtpos:
             goto qhow;
         current_line = findline();
         goto execline;
-
     case KW_GOSUB:
         goto gosub;
     case KW_RETURN:
         goto gosub_return;
-    case KW_THEN:
-        goto interperateAtTxtpos;
     case KW_REM:
     case KW_QUOTE:
         goto execnextline;	// Ignore line completely
@@ -1055,15 +1061,8 @@ interperateAtTxtpos:
     case KW_BYE:
         // Leave the basic interperater
         return 0;
-
-    case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
-        goto awrite;
-    case KW_DWRITE:  // DWRITE <pin>, HIGH|LOW
-        goto dwrite;
-
     case KW_RSEED:
         goto rseed;
-
     case KW_DEFAULT:
         goto assignment;
     default:
@@ -1147,6 +1146,7 @@ forloop: {
             goto qwhat;
 
 
+
         if(!expression_error && *txtpos == NL) {
             struct stack_for_frame *f;
             if(sp + sizeof(struct stack_for_frame) < stack_limit)
@@ -1202,8 +1202,8 @@ gosub_return:
         case STACK_GOSUB_FLAG:
             if(table_index == KW_RETURN) {
                 struct stack_gosub_frame *f = (struct stack_gosub_frame *)tempsp;
-                current_line	= f->current_line;
-                txtpos			= f->txtpos;
+                current_line    = f->current_line;
+                txtpos          = f->txtpos;
                 sp += sizeof(struct stack_gosub_frame);
                 goto run_next_statement;
             }
@@ -1223,6 +1223,7 @@ gosub_return:
                         // We have to loop so don't pop the stack
                         txtpos = f->txtpos;
                         current_line = f->current_line;
+                        sp = tempsp;
                         goto run_next_statement;
                     }
                     // We've run to the end of the loop. drop out of the loop, popping the stack
@@ -1234,7 +1235,6 @@ gosub_return:
             tempsp += sizeof(struct stack_for_frame);
             break;
         default:
-            //printf("Stack is stuffed!\n");
             goto warmstart;
         }
     }
@@ -1285,7 +1285,6 @@ poke:
     expression();
     if(expression_error)
         goto qwhat;
-    //printf("Poke %p value %i\n",address, (unsigned char)value);
     // Check that we are at the end of the statement
     if(*txtpos != NL && *txtpos != ':')
         goto qwhat;
@@ -1350,32 +1349,7 @@ mem:
     printmsg(memorymsg);
     goto run_next_statement;
 
-
     /*************************************************/
-
-awrite: // AWRITE <pin>,val
-dwrite:
-    goto unimplemented;
-
-    /*************************************************/
-files:
-    // display a listing of files on the device.
-    // version 1: no support for subdirectories
-    goto unimplemented;
-
-chain:
-    runAfterLoad = true;
-
-load:
-    // clear the program
-    program_end = program_start;
-
-    goto unimplemented;
-
-save:
-    // save from memory out to a file
-    goto unimplemented;
-
 rseed: {
         short int value;
 
