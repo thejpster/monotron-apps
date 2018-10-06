@@ -37,26 +37,24 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
-int kbhit(void)
-{
-  struct termios oldt, newt;
-  int ch;
-  int oldf;
-  tcgetattr(STDIN_FILENO, &oldt);
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-  ch = getchar();
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, oldf);
-  if(ch != EOF)
-  {
-    ungetc(ch, stdin);
-    return 1;
-  }
-  return 0;
+int kbhit(void) {
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+    ch = getchar();
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+    if(ch != EOF) {
+        ungetc(ch, stdin);
+        return 1;
+    }
+    return 0;
 }
 #else
 // Use the Monotron API
@@ -110,14 +108,16 @@ static void pigfx_hide_cursor(void);
 static void pigfx_movecursor(unsigned int row, unsigned int col);
 static void pigfx_print(const char* s);
 static void pigfx_printnum(unsigned int num);
+#ifdef PC_BUILD
 static void wfvbi(void);
+#endif
 static unsigned int xorshift128(void);
 static void new_apple(void);
 static void update_score(unsigned int score);
 static void initialize(void);
 static int update_snake(void);
 
-static void pigfx_bgcol(unsigned int color)
+static void pigfx_bgcol(unsigned int color) {
 #ifdef PC_BUILD
     printf("\x1b[48;5;%um", color);
 #else
@@ -201,21 +201,18 @@ static unsigned int xorshift128(void) {
     return rnd_w;
 }
 
-static void new_apple(void)
-{
+static void new_apple(void) {
     unsigned int apple_i;
     unsigned int apple_j;
     unsigned int apple_idx;
 
-    while (1)
-    {
+    while (1) {
         apple_i = (xorshift128() % (FIELD_H - 3)) + 2;
         apple_j = (xorshift128() % (FIELD_H - 3)) + 2;
 
         apple_idx = apple_i * FIELD_W + apple_j;
 
-        if (field[apple_idx] == 0)
-        {
+        if (field[apple_idx] == 0) {
             field[apple_idx] = APPLE_CHAR;
             pigfx_movecursor(apple_i + 1, apple_j + 1);
             pigfx_bgcol(APPLE_COLOR);
@@ -226,12 +223,11 @@ static void new_apple(void)
 }
 
 static void update_score(unsigned int score) {
-  pigfx_print("SCORE: ");
-  pigfx_printnum(score);
+    pigfx_print("SCORE: ");
+    pigfx_printnum(score);
 }
 
-static void initialize(void)
-{
+static void initialize(void) {
     int i;
     int j;
     int head_idx;
@@ -247,15 +243,13 @@ static void initialize(void)
     pigfx_movecursor(1, 1);
     pfield = field;
 
-    for (i = 0; i < FIELD_W; ++i)
-    {
+    for (i = 0; i < FIELD_W; ++i) {
         putchar(' ');
         *pfield++ = FIELD_CHAR;
     }
 
     // Left-Right
-    for (i = 1; i < FIELD_H - 1; ++i)
-    {
+    for (i = 1; i < FIELD_H - 1; ++i) {
         pigfx_bgcol(FIELD_COLOR);
         pigfx_movecursor(i + 1, 1);
 
@@ -263,8 +257,7 @@ static void initialize(void)
         *pfield++ = FIELD_CHAR;
 
         pigfx_bgcol(BG_COLOR);
-        for (j = 1; j < FIELD_W - 1; ++j)
-        {
+        for (j = 1; j < FIELD_W - 1; ++j) {
             putchar(' ');
             *pfield++ = 0;
         }
@@ -276,8 +269,7 @@ static void initialize(void)
 
     // Bottom
     pigfx_movecursor(FIELD_H, 1);
-    for (i = 0; i < FIELD_W; ++i)
-    {
+    for (i = 0; i < FIELD_W; ++i) {
         putchar(' ');
         *pfield++ = FIELD_CHAR;
     }
@@ -316,48 +308,42 @@ static void initialize(void)
     update_score(score);
 }
 
-static int update_snake(void)
-{
+static int update_snake(void) {
     int head_idx = snake_head.i * FIELD_W + snake_head.j;
     int tail_idx = snake_tail.i * FIELD_W + snake_tail.j;
     unsigned char c_head = field[head_idx];
     unsigned char keepsize = 1;
 
-    switch(c_head)
-    {
-        case UP_CHAR:
-            head_idx -= FIELD_W;
-            snake_head.i--;
-            break;
+    switch(c_head) {
+    case UP_CHAR:
+        head_idx -= FIELD_W;
+        snake_head.i--;
+        break;
 
-        case DOWN_CHAR:
-            head_idx += FIELD_W;
-            snake_head.i++;
-            break;
+    case DOWN_CHAR:
+        head_idx += FIELD_W;
+        snake_head.i++;
+        break;
 
-        case LEFT_CHAR:
-            head_idx--;
-            snake_head.j--;
-            break;
+    case LEFT_CHAR:
+        head_idx--;
+        snake_head.j--;
+        break;
 
-        case RIGHT_CHAR:
-            head_idx++;
-            snake_head.j++;
-            break;
+    case RIGHT_CHAR:
+        head_idx++;
+        snake_head.j++;
+        break;
     }
 
-    if (field[head_idx] == APPLE_CHAR)
-    {
+    if (field[head_idx] == APPLE_CHAR) {
         keepsize = 0;
         score += SCORE_PER_APPLE;
         pigfx_bgcol(BG_COLOR);
         pigfx_movecursor(FIELD_H + 1, 34);
         update_score(score);
-    }
-    else
-    {
-        if (field[head_idx] != 0)
-        {
+    } else {
+        if (field[head_idx] != 0) {
             return 0;
         }
     }
@@ -367,43 +353,38 @@ static int update_snake(void)
     pigfx_movecursor(snake_head.i + 1, snake_head.j + 1);
     putchar(' ');
 
-    if (keepsize)
-    {
+    if (keepsize) {
         c_head = field[tail_idx];
         field[tail_idx] = 0;
         pigfx_bgcol(BG_COLOR);
         pigfx_movecursor(snake_tail.i + 1, snake_tail.j + 1);
         putchar(' ');
 
-        switch(c_head)
-        {
-            case UP_CHAR:
-                snake_tail.i--;
-                break;
+        switch(c_head) {
+        case UP_CHAR:
+            snake_tail.i--;
+            break;
 
-            case DOWN_CHAR:
-                snake_tail.i++;
-                break;
+        case DOWN_CHAR:
+            snake_tail.i++;
+            break;
 
-            case LEFT_CHAR:
-                snake_tail.j--;
-                break;
+        case LEFT_CHAR:
+            snake_tail.j--;
+            break;
 
-            case RIGHT_CHAR:
-                snake_tail.j++;
-                break;
+        case RIGHT_CHAR:
+            snake_tail.j++;
+            break;
         }
-    }
-    else
-    {
+    } else {
         new_apple();
     }
 
     return 1;
 }
 
-int main(void)
-{
+int main(void) {
     char usercommand;
     int  head_idx;
 
@@ -412,10 +393,8 @@ int main(void)
     while (!kbhit() || getchar() != 'n')
         rnd_x++;
 
-    while (1)
-    {
-        if (update_snake() == 0)
-        {
+    while (1) {
+        if (update_snake() == 0) {
             pigfx_movecursor(FIELD_H / 2, FIELD_W / 2 - 5);
             pigfx_print("GAME OVER!");
             while (getchar() != 'n') ;
@@ -425,57 +404,55 @@ int main(void)
 
         usercommand = 0; // none
 
-        if (kbhit())
-        {
+        if (kbhit()) {
             usercommand = getchar();
         }
 
         head_idx = snake_head.i * FIELD_W + snake_head.j;
 
-        switch(usercommand)
-        {
-            case 'w':
-            case 'W':
-                if (field[head_idx] != DOWN_CHAR)
-                    field[head_idx] = UP_CHAR;
-                break;
+        switch(usercommand) {
+        case 'w':
+        case 'W':
+            if (field[head_idx] != DOWN_CHAR)
+                field[head_idx] = UP_CHAR;
+            break;
 
-            case 'd':
-            case 'D':
-                if (field[head_idx] != LEFT_CHAR)
-                    field[head_idx] = RIGHT_CHAR;
-                break;
+        case 'd':
+        case 'D':
+            if (field[head_idx] != LEFT_CHAR)
+                field[head_idx] = RIGHT_CHAR;
+            break;
 
-            case 'a':
-            case 'A':
-                if (field[head_idx] != RIGHT_CHAR)
-                    field[head_idx] = LEFT_CHAR;
-                break;
+        case 'a':
+        case 'A':
+            if (field[head_idx] != RIGHT_CHAR)
+                field[head_idx] = LEFT_CHAR;
+            break;
 
-            case 's':
-            case 'S':
-                if (field[head_idx] != UP_CHAR)
-                    field[head_idx] = DOWN_CHAR;
-                break;
+        case 's':
+        case 'S':
+            if (field[head_idx] != UP_CHAR)
+                field[head_idx] = DOWN_CHAR;
+            break;
 
-            case 'n':
-            case 'N':
-                initialize();
-                continue;
+        case 'n':
+        case 'N':
+            initialize();
+            continue;
 
-            case 'p':
-            case 'P':
-                while (1) {
-                  if (kbhit() && getchar() == 'p') {
-                      break;
-                  }
-                  wfvbi();
+        case 'p':
+        case 'P':
+            while (1) {
+                if (kbhit() && getchar() == 'p') {
+                    break;
                 }
-                break;
+                wfvbi();
+            }
+            break;
 
-            default:
-                // do nothing
-                break;
+        default:
+            // do nothing
+            break;
 
             break;
         }
