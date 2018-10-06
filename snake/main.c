@@ -74,7 +74,7 @@ int kbhit(void) {
 #define BG_COLOR 0
 #define APPLE_COLOR 160
 #else
-#define SNAKE_COLOR 0
+#define SNAKE_COLOR 6
 #define FIELD_COLOR 3
 #define BG_COLOR 7
 #define APPLE_COLOR 1
@@ -215,8 +215,10 @@ static void new_apple(void) {
         if (field[apple_idx] == 0) {
             field[apple_idx] = APPLE_CHAR;
             pigfx_movecursor(apple_i + 1, apple_j + 1);
-            pigfx_bgcol(APPLE_COLOR);
+            pigfx_fgcol(APPLE_COLOR);
+            pigfx_bgcol(BG_COLOR);
             putchar('@');
+            pigfx_fgcol(SNAKE_COLOR);
             return;
         }
     }
@@ -303,7 +305,7 @@ static void initialize(void) {
     pigfx_fgcol(15);
     pigfx_print("F.Bergamasco 2016");
     pigfx_movecursor(FIELD_H + 2, 1);
-    pigfx_print("wsad:move, n:new game, p:pause");
+    pigfx_print(" w:up s:down a:left d:right n:new game p:pause");
     pigfx_movecursor(FIELD_H + 1, 34);
     update_score(score);
 }
@@ -457,8 +459,8 @@ int main(void) {
             break;
         }
 
-        // DELAY LOOP - runs at 6 frames per second
-        for(int i = 0; i < 10; i++) {
+        // DELAY LOOP - runs at 10 frames per second
+        for(int i = 0; i < 6; i++) {
             wfvbi();
         }
     }
