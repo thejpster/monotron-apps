@@ -9,6 +9,7 @@ struct callbacks_t {
 	void(*wfvbi)(void* p_context);
 	int32_t(*kbhit)(void* p_context);
 	void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
+	int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
 };
 
 typedef int32_t(*entry_point_t)(const struct callbacks_t*);
@@ -78,6 +79,10 @@ void itoa(int n, char s[]) {
 	}
 	s[i] = '\0';
 	reverse(s);
+}
+
+int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume) {
+	return p_callbacks->play(p_callbacks->p_context, frequency, (uint8_t) channel, (uint8_t) waveform, volume);
 }
 
 static unsigned int strlen(const char*s) {
