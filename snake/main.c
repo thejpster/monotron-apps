@@ -56,6 +56,13 @@ int kbhit(void) {
     }
     return 0;
 }
+
+#define CHANNEL_0 0
+#define WAVEFORM_SQUARE 0
+#define MAX_VOLUME 255
+int play(uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume) {
+    return 0;
+}
 #else
 // Use the Monotron API
 #include <monotron.h>
@@ -101,6 +108,8 @@ static unsigned int rnd_y = 113;
 static unsigned int rnd_z = 543;
 static unsigned int rnd_w = 11;
 
+static unsigned int sound_frames_remaining = 0;
+
 static void pigfx_bgcol(unsigned int color);
 static void pigfx_cls(void);
 static void pigfx_fgcol(unsigned int color);
@@ -116,6 +125,10 @@ static void new_apple(void);
 static void update_score(unsigned int score);
 static void initialize(void);
 static int update_snake(void);
+static void beep(uint32_t frequency, uint8_t frames);
+static void wait_frame(void);
+static void wait_note(void);
+static void update_sound(void);
 
 static void pigfx_bgcol(unsigned int color) {
 #ifdef PC_BUILD
@@ -344,6 +357,7 @@ static int update_snake(void) {
         pigfx_bgcol(BG_COLOR);
         pigfx_movecursor(FIELD_H + 1, 34);
         update_score(score);
+        beep(1000, 5);
     } else {
         if (field[head_idx] != 0) {
             return 0;
@@ -386,6 +400,36 @@ static int update_snake(void) {
     return 1;
 }
 
+// Start a beep (but don't wait for it to finish)
+static void beep(uint32_t frequency, uint8_t frames) {
+    play(frequency * 100, CHANNEL_0, WAVEFORM_SQUARE, MAX_VOLUME);
+    sound_frames_remaining = frames;
+}
+
+// Wait for next frame (updating sound as required)
+static void wait_frame(void) {
+    wfvbi();
+    update_sound();
+}
+
+// Wait for current note to finish
+static void wait_note(void) {
+    while (sound_frames_remaining != 0) {
+        wfvbi();
+        update_sound();
+    }
+}
+
+// Stop the sound when we've heard enough
+static void update_sound(void) {
+    if (sound_frames_remaining > 0) {
+        sound_frames_remaining--;
+        if (sound_frames_remaining == 0) {
+            play(0, CHANNEL_0, WAVEFORM_SQUARE, 0);
+        }
+    }
+}
+
 int main(void) {
     char usercommand;
     int  head_idx;
@@ -399,7 +443,13 @@ int main(void) {
         if (update_snake() == 0) {
             pigfx_movecursor(FIELD_H / 2, FIELD_W / 2 - 5);
             pigfx_print("GAME OVER!");
-            while (getchar() != 'n') ;
+            beep(880, 30);
+            wait_note();
+            beep(440, 60);
+            wait_note();
+            while (getchar() != 'n') {
+                wait_frame();
+            };
             initialize();
             continue;
         }
@@ -448,7 +498,7 @@ int main(void) {
                 if (kbhit() && getchar() == 'p') {
                     break;
                 }
-                wfvbi();
+                wait_frame();
             }
             break;
 
@@ -461,7 +511,7 @@ int main(void) {
 
         // DELAY LOOP - runs at 10 frames per second
         for(int i = 0; i < 6; i++) {
-            wfvbi();
+            wait_frame();
         }
     }
 }
