@@ -4,8 +4,9 @@
 #define PAGE_SECONDS 10
 
 static const char PAGE_1[] = "" \
-"\eB\eyWelcome to the Monotron!\eW\ek\n" \
-"\n" \
+"\eZ\eY\e^Welcome to the Monotron!\n" \
+"\eR\evWelcome to the Monotron!\n" \
+"\e-\eW\n" \
 "I am a Cortex-M4 powered home computer.\n" \
 "My ROM is written in the Rust Programming\n" \
 "Language (www.rust-lang.org).\n" \
@@ -17,64 +18,50 @@ static const char PAGE_1[] = "" \
 "I drive an 800x600 VGA display through 3 SPI.\n" \
 "peripherals at 20 MHz.\n" \
 "\n" \
-"o 400x600 effective resolution\n" \
-"o 8 colours \eRR\eGG\eBB\eCC\eMM\eYY\eW\n" \
-"o 48 x 36 text mode\n" \
-"o 8 x 16 characters (from FreeBSD)\n" \
-"o CodePage 850 character set \x03\x04\x05\x06\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n";
+"  \eYo\eC 400x600 effective resolution\n" \
+"  \eYo\eC 8 colours \eRR\eGG\eBB\eCC\eMM\eYY\eW\n" \
+"  \eYo\eC 48 cols by 36 rows in text mode\n" \
+"  \eYo\eC 8px by 16px characters\n" \
+"  \eYo\eC CodePage 850 character set \x03\x04\x05\x06\n" \
+"  \eYo\eC Alternative 'Teletext' character set\n" \
+"  \eYo\eC Support for custom fonts in RAM\n" \
+"\eW\n";
 
 static const char PAGE_2[] = "" \
-"Features:\n" \
-"\n" \
-"o 80 MHz Cortex-M4F\n" \
-"o TI TM4C123 Microcontroller\n" \
-"o 32 KiB SRAM\n" \
-"o 256 KiB Flash ROM\n" \
-"o Serial Input @ 115200 bps\n" \
-"o PS/2 Keyboard Input*\n" \
-"o 8-bit mono audio output*\n" \
-"\n" \
+"\eZ\eY\e^Features:\n" \
+"\eG\evFeatures:\n" \
+"\e-\eW\n" \
+"  \eYo\eC 80 MHz Cortex-M4F\n" \
+"  \eYo\eC TI TM4C123 Microcontroller\n" \
+"  \eYo\eC 32 KiB SRAM (24 KiB reserved for user)\n" \
+"  \eYo\eC 256 KiB Flash ROM\n" \
+"  \eYo\eC Simple C API for programming\n" \
+"  \eYo\eC Serial Input @ 115200 bps\n" \
+"  \eYo\eC 9-pin Atari Joystick interface\n" \
+"  \eYo\eC 8-bit mono audio output\n" \
+"  \eYo\eC PS/2 Keyboard Input*\n" \
+"  \eYo\eC SD/MMC Interface*\n" \
+"\eW\n" \
 "* coming soon\n" \
 "\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
-"\n" \
+"Software ports so far include TINY BASIC and\n" \
+"Snake.\n" \
 "\n";
+
+static const char PAGE_3[] = "" \
+"\eZ\eG\e^Learn more:\n" \
+"\eR\evLearn more:\n" \
+"\e-\n" \
+"  \eYo\eM https://github.com/thejpster/monotron\n" \
+"\n" \
+"  \eYo\eM https://github.com/thejpster/monotron-apps\n" \
+"\n" \
+"  \eYo\eM https://github.com/rust-embedded\n" \
+"\n" \
+"  \eYo\eM https://www.rust-lang.org\n" \
+"\n" \
+"  \eYo\eM https://twitter.com/therealjpster\n" \
+"\eW\n";
 
 static void delay_frames(unsigned int frames);
 static bool run = true;
@@ -87,6 +74,11 @@ int main(void) {
 			return 0;
 		}
 		puts(PAGE_2);
+		delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
+		if (!run) {
+			return 0;
+		}
+		puts(PAGE_3);
 		delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
 		if (!run) {
 			return 0;
