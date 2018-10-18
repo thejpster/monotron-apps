@@ -101,6 +101,7 @@ struct {
     int j;
 } snake_tail;
 
+static bool music_playing = false;
 static unsigned char field[FIELD_W * FIELD_H];
 static unsigned int score;
 static unsigned int rnd_x = 4;
@@ -123,6 +124,7 @@ static void wfvbi(void);
 static unsigned int xorshift128(void);
 static void new_apple(void);
 static void update_score(unsigned int score);
+static void splash_screen(void);
 static void initialize(void);
 static int update_snake(void);
 static void beep(uint32_t frequency, uint8_t frames);
@@ -242,11 +244,58 @@ static void update_score(unsigned int score) {
     pigfx_printnum(score);
 }
 
+static void splash_screen(void) {
+    font_teletext();
+    // Clear the screen (white on black)
+    puts("\ek\eW\eZ\eG");
+
+    // Draw the logo
+    static const uint8_t sixels[]  = {
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  48, 60, 63, 21, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  48, 60, 63, 63, 60, 52, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  3,  43, 63, 21, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  56, 63, 7,  0,  0,  47, 63, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  42, 63, 21, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  63, 63, 0,  0,  0,  42, 63, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  42, 63, 21, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  63, 63, 16, 0,  0,  2,  3,  0,  32, 60, 63, 21, 56, 62, 63, 60, 0,  0,  0,  32, 60, 63,
+        63, 63, 52, 0,  0,  0,  42, 63, 21, 0,  40, 60, 60, 20, 0,  0,  32, 60, 63, 63, 60, 16, 0,  0,
+        0,  0,  63, 63, 63, 52, 0,  0,  0,  0,  2, 43,  63, 31, 3,  3,  63, 63, 20, 0,  0,  63, 63, 0,
+        0,  43, 63, 21, 0,  0,  42, 63, 21, 0,  32, 63, 1,  0,  0,  32, 63, 23, 0,  2,  63, 53, 0,  0,
+        0,  0,  2,  63, 63, 63, 63, 52, 0,  0,  0,  42, 63, 21, 0,  0,  43, 63, 21, 0,  0,  15, 15, 0,
+        0,  42, 63, 21, 0,  0,  42, 63, 21, 32, 62, 5,  0,  0,  0,  42, 63, 0,  0,  0,  42, 63, 20, 0,
+        0,  0,  0,  2,  15, 63, 63, 63, 52, 0,  0,  42, 63, 21, 0,  0,  42, 63, 21, 0,  0,  0,  0,  48,
+        56, 62, 63, 21, 0,  0,  42, 63, 21, 62, 53, 0,  0,  0,  0,  63, 63, 63, 63, 63, 63, 63, 21, 0,
+        0,  0,  0,  0,  0,  2,  63, 63, 63, 0,  0,  42, 63, 21, 0,  0,  42, 63, 21, 0,  0,  56, 63, 15,
+        3,  43, 63, 21, 0,  0,  42, 63, 31, 47, 63, 20, 0,  0,  0,  63, 63, 0,  0,  0,  0,  0,  0,  0,
+        0,  40, 63, 0,  0,  0,  2,  63, 63, 0,  0,  42, 63, 21, 0,  0,  42, 63, 21, 0,  40, 63, 23, 0,
+        0,  42, 63, 21, 0,  0,  42, 63, 21, 10, 63, 61, 0,  0,  0,  43, 63, 20, 0,  0,  0,  0,  0,  0,
+        0,  42, 63, 0,  0,  0,  32, 63, 63, 0,  0,  42, 63, 21, 0,  0,  42, 63, 21, 0,  42, 63, 53, 0,
+        0,  42, 63, 21, 0,  0,  42, 63, 21, 0,  43, 63, 21, 0,  0,  42, 63, 61, 16, 0,  32, 56, 20, 0,
+        0,  42, 63, 52, 48, 48, 63, 63, 1,  0,  32, 62, 63, 61, 16, 32, 62, 63, 53, 16, 0,  63, 63, 60,
+        0,  47, 63, 53, 16, 32, 62, 63, 53, 16, 2,  63, 63, 52, 0,  0,  11, 63, 63, 63, 63, 31, 1,  0,
+        0,  0,  3,  15, 15, 15, 3,  0,  0,  0,  2,  3,  3,  3,  1,  2,  3,  3,  3,  1,  0,  0,  3,  3,
+        0,  2,  3,  3,  1,  2,  3,  3,  3,  1,  0,  3,  3,  3,  0,  0,  0,  2,  3,  3,  1,  0,  0,  0
+    };
+    for(size_t i = 0; i < sizeof(sixels); i++) {
+        put_separated_sixel(sixels[i]);
+    }
+    puts("\eY");
+    puts("Original for RC2014, Copyright F.Bergamasco 2016\n")
+    puts("Monotron version, Copyright J.Pallant 2018\n\n")
+    puts("Press 'n' to start...")
+
+    // Configure music here
+}
+
 static void initialize(void) {
     int i;
     int j;
     int head_idx;
     unsigned char* pfield = field;
+
+    font_normal();
 
     score = 0;
 
@@ -428,16 +477,24 @@ static void update_sound(void) {
             play(0, CHANNEL_0, WAVEFORM_SQUARE, 0);
         }
     }
+
+    if (music_playing) {
+        // Play music here
+    }
 }
 
 int main(void) {
     char usercommand;
     int  head_idx;
 
-    initialize();
+    splash_screen();
 
-    while (!kbhit() || getchar() != 'n')
+    while (!kbhit() || getchar() != 'n') {
+        wait_frame();
         rnd_x++;
+    }
+
+    initialize();
 
     while (1) {
         if (update_snake() == 0) {
