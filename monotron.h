@@ -26,9 +26,9 @@ int main(void);
 /* Write a single character to the screen at the current cursor position. */
 int putchar(char ch);
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
-int put_connected_sixel(uint8_t ch);
+void put_connected_sixel(uint8_t ch);
 /* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
-int put_separated_sixel(uint8_t ch);
+void put_separated_sixel(uint8_t ch);
 /* Write a null-terminated string to the screen at the current cursor position. */
 int puts(const char* s);
 /* Get a key from the keyboard */

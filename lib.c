@@ -38,7 +38,7 @@ int putchar(char ch) {
 }
 
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
-int put_connected_sixel(uint8_t ch) {
+void put_connected_sixel(uint8_t ch) {
 	ch = ch & 63;
 	if (ch >= 32) {
 		putchar(ch - 32 + 0xC0);
@@ -48,7 +48,7 @@ int put_connected_sixel(uint8_t ch) {
 }
 
 /* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
-int put_separated_sixel(uint8_t ch) {
+void put_separated_sixel(uint8_t ch) {
 	ch = ch & 63;
 	if (ch >= 32) {
 		putchar(ch - 32 + 0xE0);
