@@ -62,6 +62,98 @@ struct {
     int j;
 } snake_tail;
 
+typedef struct music_event_t {
+    uint32_t frame;
+    uint32_t frequency_centihz;
+    uint8_t volume;
+    waveform_t waveform;
+} music_event_t;
+
+typedef struct track_t {
+    channel_t channel;
+    const music_event_t* p_events;
+    size_t num_events;
+    size_t current_event;
+    uint32_t wrap_frame_at;
+    uint32_t current_frame;
+} track_t;
+
+static const music_event_t TRACK0_EVENTS[] = {
+    { 0, Note_C3, 200, WAVEFORM_SINE },
+    { 7, Note_E3, 200, WAVEFORM_SINE },
+    { 15, Note_G3, 200, WAVEFORM_SINE },
+    { 22, Note_C4, 200, WAVEFORM_SINE },
+};
+
+static track_t TRACK0 = {
+    .channel = CHANNEL_0,
+    .p_events = TRACK0_EVENTS,
+    .num_events = ELEMOF(TRACK0_EVENTS),
+    .current_event = 0,
+    .wrap_frame_at = 30,
+    .current_frame = 0,
+};
+
+static const music_event_t TRACK1_EVENTS[] = {
+    { 30, Note_C1, 255, WAVEFORM_NOISE },
+    { 32, 0, 0, WAVEFORM_NOISE },
+    { 75, Note_C1, 255, WAVEFORM_NOISE },
+    { 77, 0, 0, WAVEFORM_NOISE },
+    { 90, Note_C1, 255, WAVEFORM_NOISE },
+    { 92, 0, 0, WAVEFORM_NOISE },
+};
+
+static track_t TRACK1 = {
+    .channel = CHANNEL_1,
+    .p_events = TRACK1_EVENTS,
+    .num_events = ELEMOF(TRACK1_EVENTS),
+    .current_event = 0,
+    .wrap_frame_at = 120,
+    .current_frame = 0,
+};
+
+static const music_event_t TRACK2_EVENTS[] = {
+    { 0, Note_C5, 96, WAVEFORM_SQUARE },
+    { 0 + 40, 0, 0, WAVEFORM_SQUARE },
+    { 45, Note_A4, 96, WAVEFORM_SQUARE },
+    { 45 + 10, 0, 0, WAVEFORM_SQUARE },
+    { 60, Note_G4, 96, WAVEFORM_SQUARE },
+    { 60 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 90, Note_F4, 96, WAVEFORM_SQUARE },
+    { 90 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 120, Note_G4, 96, WAVEFORM_SQUARE },
+    { 120 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 150, Note_F4, 96, WAVEFORM_SQUARE },
+    { 150 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 180, Note_G4, 96, WAVEFORM_SQUARE },
+    { 180 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 210, Note_B4, 96, WAVEFORM_SQUARE },
+    { 210 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 240, Note_C5, 96, WAVEFORM_SQUARE },
+    { 240 + 40, 0, 0, WAVEFORM_SQUARE },
+    { 285, Note_A4, 96, WAVEFORM_SQUARE },
+    { 285 + 10, 0, 0, WAVEFORM_SQUARE },
+    { 300, Note_G4, 96, WAVEFORM_SQUARE },
+    { 300 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 330, Note_F4, 96, WAVEFORM_SQUARE },
+    { 330 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 360, Note_G4, 96, WAVEFORM_SQUARE },
+    { 360 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 390, Note_B4, 96, WAVEFORM_SQUARE },
+    { 390 + 15, 0, 0, WAVEFORM_SQUARE },
+    { 420, Note_C5, 96, WAVEFORM_SQUARE },
+    { 420 + 45, 0, 0, WAVEFORM_SQUARE },
+};
+
+static track_t TRACK2 = {
+    .channel = CHANNEL_2,
+    .p_events = TRACK2_EVENTS,
+    .num_events = ELEMOF(TRACK2_EVENTS),
+    .current_event = 0,
+    .wrap_frame_at = 480,
+    .current_frame = 0,
+};
+
 static bool music_playing = false;
 static unsigned char field[FIELD_W * FIELD_H];
 static unsigned int score;
@@ -79,9 +171,6 @@ static void pigfx_hide_cursor(void);
 static void pigfx_movecursor(unsigned int row, unsigned int col);
 static void pigfx_print(const char* s);
 static void pigfx_printnum(unsigned int num);
-#ifdef PC_BUILD
-static void wfvbi(void);
-#endif
 static unsigned int xorshift128(void);
 static void new_apple(void);
 static void update_score(unsigned int score);
@@ -92,78 +181,43 @@ static void beep(uint32_t frequency, uint8_t frames);
 static void wait_frame(void);
 static void wait_note(void);
 static void update_sound(void);
+static void game(void);
 
 static void pigfx_bgcol(unsigned int color) {
-#ifdef PC_BUILD
-    printf("\x1b[48;5;%um", color);
-#else
     const char colours[] = "wrgbcmyk";
     putchar(27);
     putchar(colours[color]);
-#endif
 }
 
 static void pigfx_cls(void) {
-#ifdef PC_BUILD
-    printf("\x1b[2J");
-#else
     putchar(27);
     putchar('Z');
-#endif
 }
 
 static void pigfx_fgcol(unsigned int color) {
-#ifdef PC_BUILD
-    printf("\x1b[38;5;%um", color);
-#else
     const char colours[] = "WRGBCMYK";
     putchar(27);
     putchar(colours[color]);
-#endif
 }
 
 static void pigfx_hide_cursor(void) {
-#ifdef PC_BUILD
-    printf("\x1b[?25l");
-#endif
+
 }
 
 static void pigfx_movecursor(unsigned int row, unsigned int col) {
-#ifdef PC_BUILD
-    printf("\x1b[%u;%uH", row, col);
-#else
     move_cursor(row, col);
-#endif
 }
 
 static void pigfx_print(const char* s) {
-#ifdef PC_BUILD
-    printf("%s", s);
-#else
     puts(s);
-#endif
 }
 
 static void pigfx_printnum(unsigned int num) {
-#ifdef PC_BUILD
-    printf("%u", num);
-#else
     // 4294967296 is the largest we can print
     char buffer[12] = { 0 };
     itoa(num, buffer);
     puts(buffer);
-#endif
 }
-
-#ifdef PC_BUILD
-static void wfvbi(void) {
-    struct timespec amount = {
-        .tv_sec = 0,
-        .tv_nsec = 1000 * 1000 * (1000 / 60)
-    };
-    nanosleep(&amount, 0);
-}
-#endif
 
 static unsigned int xorshift128(void) {
     unsigned int t = rnd_x;
@@ -433,24 +487,43 @@ static void wait_note(void) {
     }
 }
 
+static void play_note(track_t* p_track) {
+    if (p_track->current_frame == p_track->wrap_frame_at) {
+        p_track->current_frame = 0;
+        p_track->current_event = 0;
+    }
+    const music_event_t* p_event = &p_track->p_events[p_track->current_event];
+    if (p_track->current_event < p_track->num_events) {
+        if (p_track->current_frame >= p_event->frame) {
+            // Play note
+            play(p_event->frequency_centihz, p_track->channel, p_event->waveform, p_event->volume);
+            // Move to next event
+            p_track->current_event++;
+        }
+    }
+    p_track->current_frame += 1;
+}
+
 // Stop the sound when we've heard enough
 static void update_sound(void) {
-    if (sound_frames_remaining > 0) {
+    if (music_playing) {
+        // Play music here
+        play_note(&TRACK0);
+        play_note(&TRACK1);
+        play_note(&TRACK2);
+    } else if (sound_frames_remaining > 0) {
         sound_frames_remaining--;
         if (sound_frames_remaining == 0) {
             play(0, CHANNEL_0, WAVEFORM_SQUARE, 0);
         }
     }
 
-    if (music_playing) {
-        // Play music here
-    }
 }
 
-int main(void) {
+static void game(void) {
     char usercommand;
     int  head_idx;
-
+    music_playing = true;
     splash_screen();
 
     while (!kbhit() || getchar() != 'n') {
@@ -458,21 +531,31 @@ int main(void) {
         rnd_x++;
     }
 
+    // Stop the music
+    play(0, CHANNEL_0, WAVEFORM_SQUARE, 0);
+    play(0, CHANNEL_1, WAVEFORM_SQUARE, 0);
+    play(0, CHANNEL_2, WAVEFORM_SQUARE, 0);
+    music_playing = false;
+
     initialize();
 
     while (1) {
         if (update_snake() == 0) {
-            pigfx_movecursor(FIELD_H / 2, FIELD_W / 2 - 5);
+            pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
             pigfx_print("GAME OVER!");
+            pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 12) / 2);
+            pigfx_print("Press a key.");
             beep(880, 30);
             wait_note();
             beep(440, 60);
             wait_note();
-            while (getchar() != 'n') {
+            // Wait for keypress
+            while (!kbhit()) {
                 wait_frame();
             };
-            initialize();
-            continue;
+            // Slurp key press
+            getchar();
+            return;
         }
 
         usercommand = 0; // none
@@ -534,5 +617,11 @@ int main(void) {
         for(int i = 0; i < 6; i++) {
             wait_frame();
         }
+    }
+}
+
+int main(void) {
+    while (1) {
+        game();
     }
 }
