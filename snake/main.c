@@ -281,10 +281,13 @@ static void splash_screen(void) {
     for(size_t i = 0; i < sizeof(sixels); i++) {
         put_separated_sixel(sixels[i]);
     }
-    puts("\eY");
-    puts("Original for RC2014, Copyright F.Bergamasco 2016\n")
-    puts("Monotron version, Copyright J.Pallant 2018\n\n")
-    puts("Press 'n' to start...")
+    puts(
+        "\eY"
+        "Original for RC2014, Copyright F.Bergamasco 2016\n"
+        "Monotron version, Copyright J.Pallant 2018\n"
+        "\eC\n"
+        "Press 'n' to start..."
+    );
 
     // Configure music here
 }
