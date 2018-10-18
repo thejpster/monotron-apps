@@ -1,6 +1,10 @@
 #include <monotron.h>
 #include <stdint.h>
 
+#define FONT_MODE_NORMAL 0
+#define FONT_MODE_TELETEXT 1
+#define FONT_MODE_CUSTOM 2
+
 struct callbacks_t {
 	void* p_context;
 	int32_t(*putchar)(void* p_context, char ch);
@@ -10,6 +14,7 @@ struct callbacks_t {
 	int32_t(*kbhit)(void* p_context);
 	void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
 	int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
+	void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
 };
 
 typedef int32_t(*entry_point_t)(const struct callbacks_t*);
@@ -30,6 +35,26 @@ int32_t entry(const struct callbacks_t* callbacks) {
 /* Write 8-bit char to stdout */
 int putchar(char ch) {
 	return p_callbacks->putchar(p_callbacks->p_context, ch);
+}
+
+/* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
+int put_connected_sixel(uint8_t ch) {
+	ch = ch & 63;
+	if (ch >= 32) {
+		putchar(ch - 32 + 0xC0);
+	} else {
+		putchar(ch + 0x80);
+	}
+}
+
+/* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
+int put_separated_sixel(uint8_t ch) {
+	ch = ch & 63;
+	if (ch >= 32) {
+		putchar(ch - 32 + 0xE0);
+	} else {
+		putchar(ch + 0xA0);
+	}
 }
 
 /* Write 8-bit string to stdout. */
@@ -84,6 +109,22 @@ void itoa(int n, char s[]) {
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume) {
 	return p_callbacks->play(p_callbacks->p_context, frequency, (uint8_t) channel, (uint8_t) waveform, volume);
 }
+
+/* Switch to the CodePage 850 font */
+void font_normal(void) {
+	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_NORMAL, NULL);
+}
+
+/* Switch to the Teletext font */
+void font_teletext(void) {
+	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_TELETEXT, NULL);
+}
+
+/* Supply 4096 bytes of font data (16 bytes per char, 256 chars) */
+void font_custom(const void* p_font) {
+	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_CUSTOM, p_font);
+}
+
 
 static unsigned int strlen(const char*s) {
 	unsigned int result = 0;
