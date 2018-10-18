@@ -27,46 +27,7 @@
  *
  **********************************************************************************/
 
-#ifdef PC_BUILD
-// Build for Linux
-#include <stdio.h>
-#include <time.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
-int kbhit(void) {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    if(ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-    return 0;
-}
-
-#define CHANNEL_0 0
-#define WAVEFORM_SQUARE 0
-#define MAX_VOLUME 255
-int play(uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume) {
-    return 0;
-}
-#else
-// Use the Monotron API
 #include <monotron.h>
-#endif
 
 #define FIELD_CHAR 'F'
 #define APPLE_CHAR 'A'
