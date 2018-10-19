@@ -13,7 +13,7 @@ rebuild: clean all
 $(OUT_DIR)/app.bin: $(OUT_DIR)/app
 	arm-none-eabi-objcopy -O binary $^ $@
 
-$(OUT_DIR)/app: $(OUT_DIR)/main.o $(OUT_DIR)/lib.o
+$(OUT_DIR)/app: $(OBJECTS)
 	arm-none-eabi-gcc $(CFLAGS) -T ../monotron-app.ld -o $@ $^
 
 $(OUT_DIR)/%.o: %.c

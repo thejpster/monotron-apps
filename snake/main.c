@@ -177,7 +177,7 @@ static void update_score(unsigned int score);
 static void splash_screen(void);
 static void initialize(void);
 static int update_snake(void);
-static void beep(uint32_t frequency, uint8_t frames);
+static void beep(uint32_t frequency, uint8_t frames, uint8_t volume);
 static void wait_frame(void);
 static void wait_note(void);
 static void update_sound(void);
@@ -424,7 +424,7 @@ static int update_snake(void) {
         pigfx_bgcol(BG_COLOR);
         pigfx_movecursor(FIELD_H + 1, 34);
         update_score(score);
-        beep(1000, 5);
+        beep(1000, 5, MAX_VOLUME);
     } else {
         if (field[head_idx] != 0) {
             return 0;
@@ -467,9 +467,9 @@ static int update_snake(void) {
     return 1;
 }
 
-// Start a beep (but don't wait for it to finish)
-static void beep(uint32_t frequency, uint8_t frames) {
-    play(frequency * 100, CHANNEL_0, WAVEFORM_SQUARE, MAX_VOLUME);
+// Start a beep on Channel 0 (but don't wait for it to finish)
+static void beep(uint32_t frequency, uint8_t frames, uint8_t volume) {
+    play(frequency * 100, CHANNEL_0, WAVEFORM_SQUARE, volume);
     sound_frames_remaining = frames;
 }
 
@@ -545,9 +545,9 @@ static void game(void) {
             pigfx_print("GAME OVER!");
             pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 12) / 2);
             pigfx_print("Press a key.");
-            beep(880, 30);
+            beep(880, 30, MAX_VOLUME);
             wait_note();
-            beep(440, 60);
+            beep(440, 60, MAX_VOLUME);
             wait_note();
             // Wait for keypress
             while (!kbhit()) {
@@ -609,8 +609,11 @@ static void game(void) {
         default:
             // do nothing
             break;
+        }
 
-            break;
+        // Only bip if nothing else playing
+        if (sound_frames_remaining == 0) {
+            beep(1000, 2, MAX_VOLUME / 4);
         }
 
         // DELAY LOOP - runs at 10 frames per second
