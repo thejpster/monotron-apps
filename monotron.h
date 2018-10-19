@@ -167,3 +167,11 @@ void font_normal(void);
 void font_teletext(void);
 /* Supply 4096 bytes of font data (16 bytes per char, 256 chars) */
 void font_custom(const void* p_font);
+/* Fetch joystick state */
+uint8_t get_joystick(void);
+/* Check joystick state */
+bool joystick_is_up(uint8_t state);
+bool joystick_is_down(uint8_t state);
+bool joystick_is_left(uint8_t state);
+bool joystick_is_right(uint8_t state);
+bool joystick_fire_pressed(uint8_t state);

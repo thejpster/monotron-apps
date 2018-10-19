@@ -15,6 +15,7 @@ struct callbacks_t {
 	void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
 	int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
 	void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
+	uint8_t (*get_joystick)(void* p_context);
 };
 
 typedef int32_t(*entry_point_t)(const struct callbacks_t*);
@@ -125,6 +126,31 @@ void font_custom(const void* p_font) {
 	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_CUSTOM, p_font);
 }
 
+/* Fetch joystick state */
+uint8_t get_joystick(void) {
+	return p_callbacks->get_joystick(p_callbacks->p_context);
+}
+
+/* Check joystick state */
+bool joystick_is_up(uint8_t state) {
+	return ((state & (1 << 4)) != 0);
+}
+
+bool joystick_is_down(uint8_t state) {
+	return ((state & (1 << 3)) != 0);
+}
+
+bool joystick_is_left(uint8_t state) {
+	return ((state & (1 << 2)) != 0);
+}
+
+bool joystick_is_right(uint8_t state) {
+	return ((state & (1 << 1)) != 0);
+}
+
+bool joystick_fire_pressed(uint8_t state) {
+	return ((state & (1 << 0)) != 0);
+}
 
 static unsigned int strlen(const char*s) {
 	unsigned int result = 0;
