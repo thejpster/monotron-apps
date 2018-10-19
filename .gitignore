@@ -1,5 +1,7 @@
 *.o
 */app
 */app.bin
-
 */bin
+**/target/
+
+
