@@ -13,11 +13,13 @@
 //! ```
 
 #![no_std]
+#![deny(missing_docs)]
 
 use core::panic::PanicInfo;
 use core::sync::atomic::{self, Ordering};
 
 #[repr(C)]
+/// The callbacks supplied by the Monotron OS.
 pub struct Table {
     p_context: *const Context,
     putchar: extern "C" fn(*const Context, u8) -> i32,
@@ -33,15 +35,23 @@ pub struct Table {
 
 #[link_section = ".entry_point"]
 #[no_mangle]
+/// The pointer Monotron calls to start running this application.
 pub static ENTRY_POINT: fn(*const Table) -> i32 = entry_point;
 
+/// Represents the Monotron we're running on. Can be passed to `write!` and
+/// friends.
 pub struct Host;
 
+/// An internal representation of the context we're given by the Host.
 struct Context;
 
+/// Pointer to the structure we're given by the host.
 static mut TABLE_POINTER: Option<&'static Table> = None;
 
 #[no_mangle]
+/// The function called by the host to start us up. Does some setup, then
+/// jumps to a function called `main` defined by the actual application using
+/// this crate.
 pub fn entry_point(raw_ctx: *const Table) -> i32 {
     // Turn the pointer into a reference and store in a static.
     unsafe {
@@ -85,55 +95,77 @@ impl core::fmt::Write for Host {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Represents a column on screen. Valid values are `0..=47`.
 pub struct Col(u8);
 
 #[derive(Debug, Clone, Copy)]
+/// Represents a row on screen. Valid values are `0..=36`.
 pub struct Row(u8);
 
 #[derive(Debug, Clone, Copy)]
+/// Represents a font we can set the screen to use. The whole screen uses the
+/// same font. Custom fonts must be exactly 4096 bytes (256 chars x 16
+/// bytes/char) long.
 pub enum Font {
+    /// Codepage 850
     Normal,
+    /// ASCII with added Teletext sixel block graphics
     Teletext,
+    /// A custom font
     Custom(&'static [u8]),
 }
 
 #[derive(Debug, Copy, Clone)]
+/// Represents the current state of an Atari 9-pin joystick.
 pub struct JoystickState(u8);
 
 #[derive(Debug, Copy, Clone)]
-/// A frequency
+/// A frequency we can give to the synthesiser.
 pub struct Frequency(u32);
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
+/// A channel on the synthesiser. They all run concurrently.
 pub enum Channel {
+    /// Channel 0
     Channel0 = 0,
+    /// Channel 1
     Channel1 = 1,
+    /// Channel 2
     Channel2 = 2,
 }
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
+/// A waveform on the synthesiser. You can change this note by note.
 pub enum Waveform {
+    /// A square wave
     Square = 0,
+    /// A sine wave
     Sine = 1,
+    /// A sawtooth wave
     Sawtooth = 2,
+    /// A white noise (ish)
     Noise = 3,
 }
 
 impl Frequency {
+    /// Convert a Frequency into centi-hz (i.e. 1 kHz is 100_000).
     pub fn as_centi_hz(&self) -> u32 {
         self.0
     }
 
+    /// Convert a Frequency into Hz (i.e. 1 kHz is 1000).
     pub fn as_hz(&self) -> u32 {
         self.0 / 100
     }
 
+    /// Convert a number of Hz into a Frequency.
     pub fn from_hz(hz: u16) -> Frequency {
         Frequency((hz as u32) * 100)
     }
 
+    /// Convert a number of centi-Hz into a Frequency.
     pub fn from_centi_hz(centi_hz: u32) -> Frequency {
         Frequency(centi_hz)
     }
@@ -247,6 +279,7 @@ impl JoystickState {
 /// Notes on an piano keyboard, where A4 = 440 Hz.
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum Note {
     Rest,
     C0,
@@ -500,6 +533,7 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
+/// Useful things people should have in scope.
 pub mod prelude {
     pub use core::fmt::Write as _monotron_prelude_core_fmt_Write;
 }
