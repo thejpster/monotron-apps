@@ -97,11 +97,11 @@ impl Host {
 
 #[inline(never)]
 #[panic_handler]
-#[cfg(features="print-panic")]
+#[cfg(feature="print-panic")]
 fn panic(info: &PanicInfo) -> ! {
 	use core::fmt::Write;
     // This uses about 15 KiB of our 24 KiB of RAM
-    write!(Host, "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W", _info);
+    write!(Host, "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W", info);
     loop {
         atomic::compiler_fence(Ordering::SeqCst);
     }
@@ -109,7 +109,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[inline(never)]
 #[panic_handler]
-#[cfg(not(features="print-panic"))]
+#[cfg(not(feature="print-panic"))]
 fn panic(_info: &PanicInfo) -> ! {
     loop {
         atomic::compiler_fence(Ordering::SeqCst);
