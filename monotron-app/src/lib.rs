@@ -14,7 +14,6 @@
 
 #![no_std]
 
-use core::fmt::Write;
 use core::panic::PanicInfo;
 use core::sync::atomic::{self, Ordering};
 
@@ -33,7 +32,9 @@ pub struct Table {
 }
 
 #[link_section = ".entry_point"]
+#[no_mangle]
 pub static ENTRY_POINT: fn(*const Table) -> i32 = entry_point;
+
 pub struct Host;
 
 struct Context;
@@ -96,9 +97,20 @@ impl Host {
 
 #[inline(never)]
 #[panic_handler]
+#[cfg(features="print-panic")]
+fn panic(info: &PanicInfo) -> ! {
+	use core::fmt::Write;
+    // This uses about 15 KiB of our 24 KiB of RAM
+    write!(Host, "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W", _info);
+    loop {
+        atomic::compiler_fence(Ordering::SeqCst);
+    }
+}
+
+#[inline(never)]
+#[panic_handler]
+#[cfg(not(features="print-panic"))]
 fn panic(_info: &PanicInfo) -> ! {
-    // This uses a *LOT* of our 24 KiB of RAM
-    // write!(Host, "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W", _info);
     loop {
         atomic::compiler_fence(Ordering::SeqCst);
     }

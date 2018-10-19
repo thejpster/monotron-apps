@@ -3,25 +3,42 @@ MEMORY
     SRAM (rwx) : ORIGIN = 0x20000DF4, LENGTH = 0x00006000
 }
 
-ENTRY(entry_point);
-EXTERN(entry_point);
+EXTERN(ENTRY_POINT);
 
 SECTIONS
 {
-    .text :
+    .entry ORIGIN(SRAM) :
     {
         KEEP(*(.entry_point))
+    } > SRAM
+
+    .text :
+    {
         *    (.text .text.*)
         *    (.init)
         *    (.fini)
-        *    (.rodata .rodata.*)
-        *    (.data .data.*)
-    }
+    } > SRAM
 
-    .bss (NOLOAD) :
+    .rodata : ALIGN(4)
+    {
+        *(.rodata .rodata.*);
+        /* 4-byte align the end (VMA) of this section.
+           This is required by LLD to ensure the LMA of the following .data
+           section will have the correct alignment. */
+        . = ALIGN(4);
+    } > SRAM
+
+    .bss (NOLOAD) : ALIGN(4)
     {
         *    (.bss .bss.*)
-    }
+        . = ALIGN(4);
+    } > SRAM
+
+    .data (NOLOAD) : ALIGN(4)
+    {
+        *    (.data .data.*)
+        . = ALIGN(4);
+    }  > SRAM
 
     /* ## .got */
     /* Dynamic relocations are unsupported. This section is only used to detect relocatable code in
