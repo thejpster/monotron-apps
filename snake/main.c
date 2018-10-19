@@ -79,10 +79,10 @@ typedef struct track_t {
 } track_t;
 
 static const music_event_t TRACK0_EVENTS[] = {
-    { 0, Note_C3, 200, WAVEFORM_SINE },
-    { 7, Note_E3, 200, WAVEFORM_SINE },
-    { 15, Note_G3, 200, WAVEFORM_SINE },
-    { 22, Note_C4, 200, WAVEFORM_SINE },
+    { 0, Note_C2, 100, WAVEFORM_SAWTOOTH },
+    { 7, Note_E2, 100, WAVEFORM_SAWTOOTH },
+    { 15, Note_G2, 100, WAVEFORM_SAWTOOTH },
+    { 22, Note_C3, 100, WAVEFORM_SAWTOOTH },
 };
 
 static track_t TRACK0 = {
