@@ -181,6 +181,7 @@ static void beep(uint32_t frequency, uint8_t frames, uint8_t volume);
 static void wait_frame(void);
 static void wait_note(void);
 static void update_sound(void);
+static char get_input(void);
 static void game(void);
 
 static void pigfx_bgcol(unsigned int color) {
@@ -262,7 +263,7 @@ static void update_score(unsigned int score) {
 static void splash_screen(void) {
     font_teletext();
     // Clear the screen (white on black)
-    puts("\ek\eW\eZ\eG");
+    puts("\ek\eW\eZ\eG\n\n");
 
     // Draw the logo
     static const uint8_t sixels[]  = {
@@ -297,11 +298,11 @@ static void splash_screen(void) {
         put_separated_sixel(sixels[i]);
     }
     puts(
-        "\eY"
+        "\n\n\n\eY"
         "Original for RC2014, Copyright F.Bergamasco 2016\n"
         "Monotron version, Copyright J.Pallant 2018\n"
         "\eC\n"
-        "Press 'n' to start..."
+        "Press 'p' or Fire to start..."
     );
 
     // Configure music here
@@ -385,7 +386,7 @@ static void initialize(void) {
     pigfx_fgcol(15);
     pigfx_print("F.Bergamasco 2016");
     pigfx_movecursor(FIELD_H + 2, 1);
-    pigfx_print(" w:up s:down a:left d:right n:new game p:pause");
+    pigfx_print(" w:up s:down a:left d:right p:pause/start");
     pigfx_movecursor(FIELD_H + 1, 34);
     update_score(score);
 }
@@ -520,13 +521,48 @@ static void update_sound(void) {
 
 }
 
-static void game(void) {
-    char usercommand;
-    int  head_idx;
+static char get_input(void) {
+    char usercommand = 0;
+    if (kbhit()) {
+        usercommand = getchar();
+    } else {
+        uint8_t js = get_joystick();
+        if (joystick_fire_pressed(js)) {
+            usercommand = 'p';
+        } else if (joystick_is_up(js)) {
+            usercommand = 'w';
+        } else if (joystick_is_down(js)) {
+            usercommand = 's';
+        } else if (joystick_is_left(js)) {
+            usercommand = 'a';
+        } else if (joystick_is_right(js)) {
+            usercommand = 'd';
+        }
+    }
+    return usercommand;
+}
+
+static void start_music(void) {
     music_playing = true;
+    TRACK0.current_frame = 0;
+    TRACK0.current_event = 0;
+    TRACK1.current_frame = 0;
+    TRACK1.current_event = 0;
+    TRACK2.current_frame = 0;
+    TRACK2.current_event = 0;
+}
+
+static void game(void) {
+    int  head_idx;
+    start_music();
     splash_screen();
 
-    while (!kbhit() || getchar() != 'n') {
+    // Don't immediately exit the splash screen because the button is still held.
+    for(int i = 0; i < 30; i++) {
+        wait_frame();
+    }
+
+    for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
         wait_frame();
         rnd_x++;
     }
@@ -543,30 +579,21 @@ static void game(void) {
         if (update_snake() == 0) {
             pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
             pigfx_print("GAME OVER!");
-            pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 12) / 2);
-            pigfx_print("Press a key.");
+            pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
+            pigfx_print("Press 'p' or Fire to try again.");
             beep(880, 30, MAX_VOLUME);
             wait_note();
             beep(440, 60, MAX_VOLUME);
             wait_note();
-            // Wait for keypress
-            while (!kbhit()) {
+            for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
                 wait_frame();
-            };
-            // Slurp key press
-            getchar();
+            }
             return;
-        }
-
-        usercommand = 0; // none
-
-        if (kbhit()) {
-            usercommand = getchar();
         }
 
         head_idx = snake_head.i * FIELD_W + snake_head.j;
 
-        switch(usercommand) {
+        switch(get_input()) {
         case 'w':
         case 'W':
             if (field[head_idx] != DOWN_CHAR)
@@ -591,17 +618,9 @@ static void game(void) {
                 field[head_idx] = DOWN_CHAR;
             break;
 
-        case 'n':
-        case 'N':
-            initialize();
-            continue;
-
         case 'p':
         case 'P':
-            while (1) {
-                if (kbhit() && getchar() == 'p') {
-                    break;
-                }
+            for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
                 wait_frame();
             }
             break;
