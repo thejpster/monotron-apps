@@ -569,9 +569,12 @@ static int update_hiscore(unsigned int new_score) {
 }
 
 static void game_over(void) {
-    pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
+    int display_row = (FIELD_H / 2) - 4;
+    pigfx_movecursor(display_row, (FIELD_W - 10) / 2);
+    display_row += 1;
     pigfx_print("GAME OVER!");
-    pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
+    pigfx_movecursor(display_row, (FIELD_W - 31) / 2);
+    display_row += 2;
     pigfx_print("Press 'p' or Fire to try again.");
     beep(880, 30, MAX_VOLUME);
     wait_note();
@@ -580,19 +583,22 @@ static void game_over(void) {
 
     // Handle high score stuff.
     int new_hi_score = update_hiscore(score);
-    pigfx_movecursor((FIELD_H / 2) + 4, (FIELD_W - 14) / 2);
+    pigfx_movecursor(display_row, (FIELD_W - 14) / 2);
+    display_row += 1;
     pigfx_print("HI SCORES:");
     for (int i = 0; i < NUM_HISCORES; i++) {
-        pigfx_movecursor((FIELD_H / 2) + 6, (FIELD_W - 6) / 2);
+        pigfx_movecursor(display_row, (FIELD_W - 6) / 2);
+        display_row += 1;
         pigfx_printnum(hiscores[i]);
     }
+    display_row += 2;
 
     unsigned int flashy_color = 0;
     // Wait for keypress
     for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
         if (new_hi_score) {
             pigfx_fgcol(flashy_color);
-            pigfx_movecursor((FIELD_H / 2) + 17, (FIELD_W - 14) / 2);
+            pigfx_movecursor(display_row, (FIELD_W - 14) / 2);
             pigfx_print("NEW HI SCORE!");
 
             flashy_color += 1;
