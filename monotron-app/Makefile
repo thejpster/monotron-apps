@@ -1,11 +1,14 @@
-.PHONY: all build clean rebuild
 
-all: build
+SOURCES =
+OBJECTS =
+
+include ../Common.mk
 
 rebuild: clean build
 
 clean:
 	cargo clean
 
-build:
+$(OUT_DIR)/app:
 	cargo build --release --examples
+	cp ./target/thumbv7em-none-eabihf/release/examples/simple $(OUT_DIR)/app
