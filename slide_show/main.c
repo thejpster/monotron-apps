@@ -52,15 +52,15 @@ static const char PAGE_3[] = "" \
 "\eZ\eG\e^Learn more:\n" \
 "\eR\evLearn more:\n" \
 "\e-\n" \
-"  \eYo\eM https://github.com/thejpster/monotron\n" \
+"  \eYo\eC https://github.com/thejpster/monotron\n" \
 "\n" \
-"  \eYo\eM https://github.com/thejpster/monotron-apps\n" \
+"  \eYo\eC https://github.com/thejpster/monotron-apps\n" \
 "\n" \
-"  \eYo\eM https://github.com/rust-embedded\n" \
+"  \eYo\eC https://github.com/rust-embedded\n" \
 "\n" \
-"  \eYo\eM https://www.rust-lang.org\n" \
+"  \eYo\eC https://www.rust-lang.org\n" \
 "\n" \
-"  \eYo\eM https://twitter.com/therealjpster\n" \
+"  \eYo\eC https://twitter.com/therealjpster\n" \
 "\eW\n";
 
 static void delay_frames(unsigned int frames);
