@@ -587,14 +587,19 @@ static void game_over(void) {
         pigfx_printnum(hiscores[i]);
     }
 
-    if (new_hi_score) {
-        pigfx_fgcol(HISCORE_COLOR);
-        pigfx_movecursor((FIELD_H / 2) + 17, (FIELD_W - 14) / 2);
-        pigfx_print("NEW HI SCORE!");
-    }
-
+    unsigned int flashy_color = 0;
     // Wait for keypress
     for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
+        if (new_hi_score) {
+            pigfx_fgcol(flashy_color);
+            pigfx_movecursor((FIELD_H / 2) + 17, (FIELD_W - 14) / 2);
+            pigfx_print("NEW HI SCORE!");
+
+            flashy_color += 1;
+            if (flashy_color > BG_COLOR) {
+                flashy_color = 0;
+            }
+        }
         wait_frame();
     }
 }
