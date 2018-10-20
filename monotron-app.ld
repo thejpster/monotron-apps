@@ -28,17 +28,17 @@ SECTIONS
         . = ALIGN(4);
     } > SRAM
 
+    .data : ALIGN(4)
+    {
+        *    (.data .data.*)
+        . = ALIGN(4);
+    }  > SRAM
+
     .bss (NOLOAD) : ALIGN(4)
     {
         *    (.bss .bss.*)
         . = ALIGN(4);
     } > SRAM
-
-    .data (NOLOAD) : ALIGN(4)
-    {
-        *    (.data .data.*)
-        . = ALIGN(4);
-    }  > SRAM
 
     /* ## .got */
     /* Dynamic relocations are unsupported. This section is only used to detect relocatable code in
