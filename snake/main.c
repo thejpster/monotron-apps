@@ -581,7 +581,6 @@ static void game_over(void) {
         pigfx_movecursor((FIELD_H / 2) + 5, (FIELD_W - 14) / 2);
         pigfx_print("NEW HI SCORE!");
     }
-    pigfx_cls();
 
     // Wait for keypress
     for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
