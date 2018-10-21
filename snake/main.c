@@ -380,7 +380,6 @@ static void initialize(void) {
     pigfx_movecursor(FIELD_H + 1, 1);
     pigfx_fgcol(SNAKE_COLOR);
     pigfx_print("*SNAKE* ");
-    pigfx_fgcol(15);
     pigfx_print("F.Bergamasco 2016");
     pigfx_movecursor(FIELD_H + 2, 1);
     pigfx_print(" w:up s:down a:left d:right p:pause/start");
