@@ -291,7 +291,12 @@ static void splash_screen(void) {
         0,  0,  3,  15, 15, 15, 3,  0,  0,  0,  2,  3,  3,  3,  1,  2,  3,  3,  3,  1,  0,  0,  3,  3,
         0,  2,  3,  3,  1,  2,  3,  3,  3,  1,  0,  3,  3,  3,  0,  0,  0,  2,  3,  3,  1,  0,  0,  0
     };
+    unsigned int line = 4;
     for(size_t i = 0; i < sizeof(sixels); i++) {
+        // The POSIX terminal doesn't wrap at 48 chars
+        if ((i % 48) == 0) {
+            move_cursor(line++, 0);
+        }
         put_separated_sixel(sixels[i]);
     }
     puts(
