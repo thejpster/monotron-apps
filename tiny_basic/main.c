@@ -141,6 +141,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <termios.h>
 #include <unistd.h>
@@ -168,6 +169,7 @@ int kbhit(void)
 }
 #else
 #include <monotron.h>
+#include <string.h>
 #endif
 
 // size of our program ram

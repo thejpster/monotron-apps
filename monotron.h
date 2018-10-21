@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef unsigned long size_t;
-
 typedef enum channel_t {
 	CHANNEL_0 = 0,
 	CHANNEL_1 = 1,
@@ -17,7 +15,6 @@ typedef enum waveform_t {
 } waveform_t;
 
 #define MAX_VOLUME 255
-#define NULL ((void*) 0)
 #define RAND_MAX 32768
 #define FRAMES_PER_SECOND 60
 #define ELEMOF(x) (sizeof (x) / sizeof (x)[0])

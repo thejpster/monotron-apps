@@ -28,6 +28,7 @@
  **********************************************************************************/
 
 #include <monotron.h>
+#include <string.h>
 
 #define FIELD_CHAR 'F'
 #define APPLE_CHAR 'A'
