@@ -8,8 +8,10 @@
 #include <signal.h>
 
 static void clean_up(int dummy);
+static void setup_console(void);
 
 static bool has_escaped = false;
+static struct termios oldt;
 
 int kbhit(void)
 {
@@ -36,18 +38,28 @@ int kbhit(void)
 
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
 void put_connected_sixel(uint8_t ch) {
-	putchar('X');
+	if (ch == 0) {
+		putchar(' ');
+	} else {
+		putchar('X');
+	}
 }
 
 /* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
 void put_separated_sixel(uint8_t ch) {
-	putchar('X');
+	if (ch == 0) {
+		putchar(' ');
+	} else {
+		putchar('#');
+	}
 }
 
 int putchar(int ch) {
 	static bool have_escape = false;
 	if (have_escape) {
 		if (!has_escaped) {
+			setup_console();
+			// Make sure we undo all our ANSI stuff later
 			signal(SIGINT, clean_up);
 			has_escaped = true;
 		}
@@ -224,8 +236,23 @@ char * monotron_utoa(unsigned int value, char* str, int base)
   return str;
 }
 
+/* Disable cursor */
+static void setup_console(void) {
+	// Disable echo
+	struct termios newt;
+	int fd_stdin = fileno(stdin);
+	tcgetattr(fd_stdin, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(fd_stdin, TCSANOW, &newt);
+	// Disable cursor
+	printf("\e[?25l");
+}
+
 static void clean_up(int dummy) {
+	int fd_stdin = fileno(stdin);
+	tcsetattr(fd_stdin, TCSANOW, &oldt);
 	move_cursor(0, 0);
-	printf("\e[0m\e[2J");
+	printf("\e[?25h\e[0m\e[2J");
 	exit(0);
 }
