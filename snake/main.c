@@ -43,11 +43,13 @@
 #define FIELD_COLOR 248
 #define BG_COLOR 0
 #define APPLE_COLOR 160
+#define HISCORE_COLOR 160
 #else
 #define SNAKE_COLOR 6
 #define FIELD_COLOR 3
 #define BG_COLOR 7
 #define APPLE_COLOR 1
+#define HISCORE_COLOR 1
 #endif
 
 #define FIELD_W 46
@@ -159,6 +161,7 @@ static track_t TRACK2 = {
 static bool music_playing = false;
 static unsigned char field[FIELD_W * FIELD_H];
 static unsigned int score;
+static unsigned int hiscore;
 static unsigned int rnd_x = 4;
 static unsigned int rnd_y = 113;
 static unsigned int rnd_z = 543;
@@ -554,6 +557,39 @@ static void start_music(void) {
     TRACK2.current_event = 0;
 }
 
+static void game_over(void) {
+    pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
+    pigfx_print("GAME OVER!");
+    pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
+    pigfx_print("Press 'p' or Fire to try again.");
+    beep(880, 30, MAX_VOLUME);
+    wait_note();
+    beep(440, 60, MAX_VOLUME);
+    wait_note();
+
+    // Handle high score stuff.
+
+    int new_hi_score = 0;
+    if (score > hiscore) {
+        hiscore = score;
+        new_hi_score = 1;
+    }
+    pigfx_movecursor((FIELD_H / 2) + 4, (FIELD_W - 14) / 2);
+    pigfx_print("HI SCORE: ");
+
+    pigfx_fgcol(APPLE_COLOR);
+    pigfx_printnum(hiscore);
+    if (new_hi_score) {
+        pigfx_movecursor((FIELD_H / 2) + 5, (FIELD_W - 14) / 2);
+        pigfx_print("NEW HI SCORE!");
+    }
+
+    // Wait for keypress
+    for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
+        wait_frame();
+    }
+}
+
 static void game(void) {
     int  head_idx;
     start_music();
@@ -579,17 +615,7 @@ static void game(void) {
 
     while (1) {
         if (update_snake() == 0) {
-            pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
-            pigfx_print("GAME OVER!");
-            pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
-            pigfx_print("Press 'p' or Fire to try again.");
-            beep(880, 30, MAX_VOLUME);
-            wait_note();
-            beep(440, 60, MAX_VOLUME);
-            wait_note();
-            for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
-                wait_frame();
-            }
+            game_over();
             return;
         }
 
