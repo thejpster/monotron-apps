@@ -135,7 +135,7 @@ typedef enum waveform_t {
 char * monotron_utoa(unsigned int value, char* str, int base);
 
 /* Entry point to the user's program */
-int main(void);
+int monotron_main(void);
 /* Write a single character to the screen at the current cursor position. */
 int putchar(int ch);
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */

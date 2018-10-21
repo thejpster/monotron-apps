@@ -3,7 +3,7 @@
 
 uint8_t g_curkey;
 
-int main(void) {
+int monotron_main(void) {
 	reset6502();
 	while (1) {
 		exec6502(100);

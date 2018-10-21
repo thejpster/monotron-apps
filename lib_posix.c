@@ -10,22 +10,25 @@
 static void clean_up(int dummy);
 static void setup_console(void);
 
-static bool has_escaped = false;
 static struct termios oldt;
+
+int main(int argc, char** argv) {
+	setup_console();
+	signal(SIGINT, clean_up);
+	return monotron_main();
+}
 
 int kbhit(void)
 {
-	struct termios oldt, newt;
+	struct termios oldt;
 	int fd_stdin = fileno(stdin);
-	int ch;
-	int oldf;
 	tcgetattr(fd_stdin, &oldt);
-	newt = oldt;
+	struct termios newt = oldt;
 	newt.c_lflag &= ~(ICANON | ECHO);
 	tcsetattr(fd_stdin, TCSANOW, &newt);
-	oldf = fcntl(fd_stdin, F_GETFL, 0);
+	int oldf = fcntl(fd_stdin, F_GETFL, 0);
 	fcntl(fd_stdin, F_SETFL, oldf | O_NONBLOCK);
-	ch = getchar();
+	int ch = getchar();
 	tcsetattr(fd_stdin, TCSANOW, &oldt);
 	fcntl(fd_stdin, F_SETFL, oldf);
 	if(ch != EOF)
@@ -57,12 +60,6 @@ void put_separated_sixel(uint8_t ch) {
 int putchar(int ch) {
 	static bool have_escape = false;
 	if (have_escape) {
-		if (!has_escaped) {
-			setup_console();
-			// Make sure we undo all our ANSI stuff later
-			signal(SIGINT, clean_up);
-			has_escaped = true;
-		}
 		switch (ch) {
 		case 'Z':
 		case 'z':
@@ -129,6 +126,7 @@ int putchar(int ch) {
 			putc(ch, stdout);
 		}
 	}
+	fflush(stdout);
 	return ch;
 }
 

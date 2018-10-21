@@ -768,7 +768,7 @@ static short int expression(void) {
 }
 
 /***************************************************************************/
-int main(void) {
+int monotron_main(void) {
     unsigned char *start;
     unsigned char *newEnd;
     unsigned char linelen;

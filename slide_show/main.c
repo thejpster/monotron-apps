@@ -71,7 +71,7 @@ static const char PAGE_4[] = "" \
 static void delay_frames(unsigned int frames);
 static bool run = true;
 
-int main(void) {
+int monotron_main(void) {
 	const char* pages[] = { PAGE_1, PAGE_2, PAGE_3, PAGE_4 };
 	while(true) {
 		for(size_t idx = 0; idx < ELEMOF(pages); idx++) {

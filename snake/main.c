@@ -666,7 +666,7 @@ static void game(void) {
     }
 }
 
-int main(void) {
+int monotron_main(void) {
     while (1) {
         game();
     }

@@ -27,7 +27,7 @@ static unsigned int rand_seed = 0;
 
 int32_t entry(const struct callbacks_t* callbacks) {
 	p_callbacks = callbacks;
-	return main();
+	return monotron_main();
 }
 
 /* Write 8-bit char to stdout */
