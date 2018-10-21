@@ -2,8 +2,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <termios.h>
+#include <stdlib.h>
 #include <time.h>
 #include <fcntl.h>
+#include <signal.h>
+
+static void clean_up(int dummy);
+
+static bool has_escaped = false;
 
 int kbhit(void)
 {
@@ -30,31 +36,77 @@ int kbhit(void)
 
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
 void put_connected_sixel(uint8_t ch) {
-	ch = ch & 63;
-	if (ch >= 32) {
-		putchar(ch - 32 + 0xC0);
-	} else {
-		putchar(ch + 0x80);
-	}
+	putchar('X');
 }
 
 /* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
 void put_separated_sixel(uint8_t ch) {
-	ch = ch & 63;
-	if (ch >= 32) {
-		putchar(ch - 32 + 0xE0);
-	} else {
-		putchar(ch + 0xA0);
-	}
+	putchar('X');
 }
 
 int putchar(int ch) {
 	static bool have_escape = false;
 	if (have_escape) {
+		if (!has_escaped) {
+			signal(SIGINT, clean_up);
+			has_escaped = true;
+		}
 		switch (ch) {
-		// TODO handle colours here
+		case 'Z':
+		case 'z':
+			printf("\e[2J");
+			break;
+		case 'K':
+			printf("\e[30m");
+			break;
+		case 'R':
+			printf("\e[31m");
+			break;
+		case 'G':
+			printf("\e[32m");
+			break;
+		case 'Y':
+			printf("\e[33m");
+			break;
+		case 'B':
+			printf("\e[34m");
+			break;
+		case 'M':
+			printf("\e[35m");
+			break;
+		case 'C':
+			printf("\e[36m");
+			break;
+		case 'W':
+			printf("\e[37m");
+			break;
+		case 'k':
+			printf("\e[40m");
+			break;
+		case 'r':
+			printf("\e[41m");
+			break;
+		case 'g':
+			printf("\e[42m");
+			break;
+		case 'y':
+			printf("\e[43m");
+			break;
+		case 'b':
+			printf("\e[44m");
+			break;
+		case 'm':
+			printf("\e[45m");
+			break;
+		case 'c':
+			printf("\e[46m");
+			break;
+		case 'w':
+			printf("\e[47m");
+			break;
 		default:
-			// TODO unknown code?
+			printf("ERR: Unsupported code '%c' (%u)", ch, ch);
+			abort();
 			break;
 		}
 		have_escape = false;
@@ -87,7 +139,7 @@ void wfvbi(void) {
 
 
 void move_cursor(unsigned char row, unsigned char col) {
-	// TODO do ANSI thing here
+	printf("\e[%u;%uH", row + 1, col + 1);
 }
 
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume) {
@@ -170,4 +222,10 @@ char * monotron_utoa(unsigned int value, char* str, int base)
     }
 
   return str;
+}
+
+static void clean_up(int dummy) {
+	move_cursor(0, 0);
+	printf("\e[0m\e[2J");
+	exit(0);
 }
