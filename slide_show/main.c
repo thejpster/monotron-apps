@@ -1,5 +1,6 @@
 #include <monotron.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define PAGE_SECONDS 10
 
@@ -33,22 +34,26 @@ static const char PAGE_2[] = "" \
 "\e-\eW\n" \
 "  \eYo\eC 80 MHz Cortex-M4F\n" \
 "  \eYo\eC TI TM4C123 Microcontroller\n" \
-"  \eYo\eC 32 KiB SRAM (24 KiB reserved for user)\n" \
+"  \eYo\eC 32 KiB SRAM (8 KiB reserved for OS)\n" \
 "  \eYo\eC 256 KiB Flash ROM\n" \
-"  \eYo\eC Simple C API for programming\n" \
+"  \eYo\eC Simple C and Rust APIs for apps\n" \
 "  \eYo\eC Serial Input @ 115200 bps\n" \
 "  \eYo\eC 9-pin Atari Joystick interface\n" \
 "  \eYo\eC 8-bit mono audio output\n" \
+"  \eYo\eC 3-channel wavetable synthesiser\n" \
 "  \eYo\eC PS/2 Keyboard Input*\n" \
 "  \eYo\eC SD/MMC Interface*\n" \
 "\eW\n" \
 "* coming soon\n" \
 "\n" \
-"Software ports so far include TINY BASIC and\n" \
-"Snake.\n" \
+"Software ports so far include TinyBASIC, Snake\n" \
+"and a 6502 Emulator running Microsoft BASIC.\n" \
 "\n";
 
 static const char PAGE_3[] = "" \
+"\n";
+
+static const char PAGE_4[] = "" \
 "\eZ\eG\e^Learn more:\n" \
 "\eR\evLearn more:\n" \
 "\e-\n" \
@@ -67,21 +72,14 @@ static void delay_frames(unsigned int frames);
 static bool run = true;
 
 int main(void) {
+	const char* pages[] = { PAGE_1, PAGE_2, PAGE_3, PAGE_4 };
 	while(true) {
-		puts(PAGE_1);
-		delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
-		if (!run) {
-			return 0;
-		}
-		puts(PAGE_2);
-		delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
-		if (!run) {
-			return 0;
-		}
-		puts(PAGE_3);
-		delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
-		if (!run) {
-			return 0;
+		for(size_t idx = 0; idx < ELEMOF(pages); idx++) {
+			puts(pages[idx]);
+			delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
+			if (!run) {
+				return 0;
+			}
 		}
 	}
 	return 1;
@@ -90,8 +88,12 @@ int main(void) {
 static void delay_frames(unsigned int frames) {
 	for(unsigned int x = 0; x < frames; x++) {
 		if (kbhit()) {
-			getchar();
-			run = false;
+			int ch = getchar();
+			// Space bar only skips a slide
+			// Anything else to quit
+			if (ch != ' ') {
+				run = false;
+			}
 			return;
 		}
 		wfvbi();

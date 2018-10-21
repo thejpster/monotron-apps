@@ -38,19 +38,11 @@
 #define LEFT_CHAR 'L'
 #define RIGHT_CHAR 'R'
 
-#ifdef PC_BUILD
-#define SNAKE_COLOR 48
-#define FIELD_COLOR 248
-#define BG_COLOR 0
-#define APPLE_COLOR 160
-#define HISCORE_COLOR 160
-#else
 #define SNAKE_COLOR 6
 #define FIELD_COLOR 3
 #define BG_COLOR 7
 #define APPLE_COLOR 1
 #define HISCORE_COLOR 1
-#endif
 
 #define FIELD_W 46
 #define FIELD_H 33
