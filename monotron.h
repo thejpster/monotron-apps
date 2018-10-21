@@ -131,11 +131,13 @@ typedef enum waveform_t {
 #define Note_AsBb8  745862
 #define Note_B8  790213
 
+/* The newlib version seems to crash...*/
+char * monotron_utoa(unsigned int value, char* str, int base);
 
 /* Entry point to the user's program */
 int main(void);
 /* Write a single character to the screen at the current cursor position. */
-int putchar(char ch);
+int putchar(int ch);
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
 void put_connected_sixel(uint8_t ch);
 /* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
@@ -154,8 +156,6 @@ void srand(unsigned int seed);
 int kbhit(void);
 /* Set where the next character will appear on screen */
 void move_cursor(unsigned char row, unsigned char col);
-/* Convert an integer to a string. s must be long enough to hold the integer. */
-void itoa(int n, char s[]);
 /* Configure one channel of the synthesiser to continuously play a note */
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume);
 /* Switch to the CodePage 850 font */

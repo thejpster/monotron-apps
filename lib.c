@@ -31,8 +31,12 @@ int32_t entry(const struct callbacks_t* callbacks) {
 }
 
 /* Write 8-bit char to stdout */
-int putchar(char ch) {
-	return p_callbacks->putchar(p_callbacks->p_context, ch);
+int putchar(int ch) {
+	if (ch <= 255) {
+		return p_callbacks->putchar(p_callbacks->p_context, (uint8_t) ch);
+	} else {
+		return -1;
+	}
 }
 
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
@@ -133,22 +137,40 @@ bool joystick_fire_pressed(uint8_t state) {
 	return ((state & (1 << 0)) != 0);
 }
 
-// size_t strlen(const char*s) {
-// 	unsigned int result = 0;
-// 	while(*s++ != '\0') {
-// 		result++;
-// 	}
-// 	return result;
-// }
+char * monotron_utoa(unsigned int value, char* str, int base)
+{
+  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+  int i, j;
+  unsigned remainder;
+  char c;
 
-// static void reverse(char s[]) {
-// 	int i, j;
-// 	for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
-// 		char c = s[i];
-// 		s[i] = s[j];
-// 		s[j] = c;
-// 	}
-// }
+  /* Check base is supported. */
+  if ((base < 2) || (base > 36))
+    {
+      str[0] = '\0';
+      return NULL;
+    }
+
+  /* Convert to string. Digits are in reverse order.  */
+  i = 0;
+  do
+    {
+      remainder = value % base;
+      str[i++] = digits[remainder];
+      value = value / base;
+    } while (value != 0);
+  str[i] = '\0';
+
+  /* Reverse string.  */
+  for (j = 0, i--; j < i; j++, i--)
+    {
+      c = str[j];
+      str[j] = str[i];
+      str[i] = c;
+    }
+
+  return str;
+}
 
 __attribute__ ((section(".entry_point")))
 const entry_point_t entry_point = entry;

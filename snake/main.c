@@ -29,6 +29,7 @@
 
 #include <monotron.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define FIELD_CHAR 'F'
 #define APPLE_CHAR 'A'
@@ -217,7 +218,7 @@ static void pigfx_print(const char* s) {
 static void pigfx_printnum(unsigned int num) {
     // 4294967296 is the largest we can print
     char buffer[12] = { 0 };
-    itoa(num, buffer);
+    monotron_utoa(num, buffer, 10);
     puts(buffer);
 }
 
