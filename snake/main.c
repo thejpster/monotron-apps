@@ -561,6 +561,8 @@ static void start_music(void) {
 static int update_hiscore(unsigned int new_score) {
     for (int i = 0; i < NUM_HISCORES; i++) {
         if (new_score > hiscores[i]) {
+            // Shift remaining scores down one position
+            memmove((hiscores+1), hiscores, NUM_HISCORES - i);
             hiscores[i] = new_score;
             return 1;
         }
