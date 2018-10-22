@@ -1,13 +1,9 @@
-
-SOURCES =
-OBJECTS =
-
 include ../Common.mk
-
-rebuild: clean build
 
 clean:
 	cargo clean
+
+all: $(OUT_DIR)/app
 
 $(OUT_DIR)/app:
 	cargo build --release --examples

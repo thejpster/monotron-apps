@@ -137,6 +137,11 @@ bool joystick_fire_pressed(uint8_t state) {
 	return ((state & (1 << 0)) != 0);
 }
 
+/* Enable/Disable cursor */
+void set_cursor_enabled(bool enabled) {
+	// Nothing
+}
+
 char * monotron_utoa(unsigned int value, char* str, int base)
 {
   const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";

@@ -162,7 +162,6 @@ typedef unsigned char byte;
 
 ////////////////////
 
-static bool inhibitOutput = false;
 static bool triggerRun = false;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +180,6 @@ static bool triggerRun = false;
 #define CTRLX	0x18
 
 typedef short unsigned LINENUM;
-#define ECHO_CHARS 0
 
 static unsigned char program[kRamSize];
 static unsigned char *txtpos,*list_line, *tmptxtpos;
@@ -347,8 +345,6 @@ static short int expression(void);
 static void line_terminator(void);
 static unsigned char breakcheck(void);
 static int inchar();
-static void outchar(unsigned char c);
-
 
 /***************************************************************************/
 static void ignore_blanks(void) {
@@ -411,7 +407,7 @@ static void printnum(int num) {
 
     if(num < 0) {
         num = -num;
-        outchar('-');
+        putchar('-');
     }
     do {
         pushb(num%10+'0');
@@ -420,7 +416,7 @@ static void printnum(int num) {
     } while (num > 0);
 
     while(digits > 0) {
-        outchar(popb());
+        putchar(popb());
         digits--;
     }
 }
@@ -435,7 +431,7 @@ void printUnum(unsigned int num) {
     } while (num > 0);
 
     while(digits > 0) {
-        outchar(popb());
+        putchar(popb());
         digits--;
     }
 }
@@ -475,7 +471,7 @@ static unsigned char print_quoted_string(void) {
 
     // Print the characters
     while(*txtpos != delim) {
-        outchar(*txtpos);
+        putchar(*txtpos);
         txtpos++;
     }
     txtpos++; // Skip over the last delimiter
@@ -487,7 +483,7 @@ static unsigned char print_quoted_string(void) {
 /***************************************************************************/
 static void printmsgNoNL(const unsigned char *msg) {
     while(*msg != 0) {
-        outchar(*msg++);
+        putchar(*msg++);
     }
 }
 
@@ -499,7 +495,7 @@ static void printmsg(const unsigned char *msg) {
 
 /***************************************************************************/
 static void getln(char prompt) {
-    outchar(prompt);
+    putchar(prompt);
     txtpos = program_end+sizeof(LINENUM);
 
     while(1) {
@@ -522,11 +518,11 @@ static void getln(char prompt) {
         default:
             // We need to leave at least one space to allow us to shuffle the line into order
             if(txtpos == variables_begin-2)
-                outchar(BELL);
+                putchar(BELL);
             else {
                 txtpos[0] = c;
                 txtpos++;
-                outchar(c);
+                putchar(c);
             }
         }
     }
@@ -573,9 +569,9 @@ static void printline() {
 
     // Output the line */
     printnum(line_num);
-    outchar(' ');
+    putchar(' ');
     while(*list_line != NL) {
-        outchar(*list_line);
+        putchar(*list_line);
         list_line++;
     }
     list_line++;
@@ -1335,8 +1331,8 @@ rseed: {
 
 /***************************************************************************/
 static void line_terminator(void) {
-    outchar(NL);
-    outchar(CR);
+    putchar(NL);
+    putchar(CR);
 }
 
 /***********************************************************/
@@ -1352,10 +1348,4 @@ static int inchar() {
     // translation for desktop systems
     if( got == LF ) got = CR;
     return got;
-}
-
-/***********************************************************/
-static void outchar(unsigned char c) {
-    if( inhibitOutput ) return;
-    putchar(c);
 }
