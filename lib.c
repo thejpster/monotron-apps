@@ -6,7 +6,6 @@
 #define FONT_MODE_CUSTOM 2
 
 struct callbacks_t {
-	void* p_context;
 	int32_t(*putchar)(void* p_context, char ch);
 	int32_t(*puts)(void* p_context, const char*);
 	int32_t(*readc)(void* p_context);
@@ -16,24 +15,26 @@ struct callbacks_t {
 	int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
 	void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
 	uint8_t (*get_joystick)(void* p_context);
+	void (*set_cursor_visible)(void* p_context, uint8_t visible);
 };
 
-typedef int32_t(*entry_point_t)(const struct callbacks_t*);
+typedef int32_t(*entry_point_t)(const struct callbacks_t*, void*);
 
-const struct callbacks_t* p_callbacks;
-void* p_context;
+static const struct callbacks_t* gp_callbacks;
+static void* gp_context;
 
 static unsigned int rand_seed = 0;
 
-int32_t entry(const struct callbacks_t* callbacks) {
-	p_callbacks = callbacks;
+int32_t entry(const struct callbacks_t* p_callbacks, void* p_context) {
+	gp_callbacks = p_callbacks;
+	gp_context = p_context;
 	return monotron_main();
 }
 
 /* Write 8-bit char to stdout */
 int putchar(int ch) {
 	if (ch <= 255) {
-		return p_callbacks->putchar(p_callbacks->p_context, (uint8_t) ch);
+		return gp_callbacks->putchar(gp_context, (uint8_t) ch);
 	} else {
 		return -1;
 	}
@@ -61,22 +62,22 @@ void put_separated_sixel(uint8_t ch) {
 
 /* Write 8-bit string to stdout. */
 int puts(const char* s) {
-	return p_callbacks->puts(p_callbacks->p_context, s);
+	return gp_callbacks->puts(gp_context, s);
 }
 
 /* Blocking character read from stdin. Returns a char or EOF */
 int getchar(void) {
-	return p_callbacks->readc(p_callbacks->p_context);
+	return gp_callbacks->readc(gp_context);
 }
 
 /* Blocking character read from stdin. Returns a char or EOF */
 int kbhit(void) {
-	return p_callbacks->kbhit(p_callbacks->p_context);
+	return gp_callbacks->kbhit(gp_context);
 }
 
 /* Wait For Vertical Blanking Interval. */
 void wfvbi(void) {
-	p_callbacks->wfvbi(p_callbacks->p_context);
+	gp_callbacks->wfvbi(gp_context);
 }
 
 int rand(void) {
@@ -89,31 +90,31 @@ void srand(unsigned int seed) {
 }
 
 void move_cursor(unsigned char row, unsigned char col) {
-	p_callbacks->move_cursor(p_callbacks->p_context, row, col);
+	gp_callbacks->move_cursor(gp_context, row, col);
 }
 
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume) {
-	return p_callbacks->play(p_callbacks->p_context, frequency, (uint8_t) channel, (uint8_t) waveform, volume);
+	return gp_callbacks->play(gp_context, frequency, (uint8_t) channel, (uint8_t) waveform, volume);
 }
 
 /* Switch to the CodePage 850 font */
 void font_normal(void) {
-	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_NORMAL, NULL);
+	gp_callbacks->change_font(gp_context, FONT_MODE_NORMAL, NULL);
 }
 
 /* Switch to the Teletext font */
 void font_teletext(void) {
-	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_TELETEXT, NULL);
+	gp_callbacks->change_font(gp_context, FONT_MODE_TELETEXT, NULL);
 }
 
 /* Supply 4096 bytes of font data (16 bytes per char, 256 chars) */
 void font_custom(const void* p_font) {
-	p_callbacks->change_font(p_callbacks->p_context, FONT_MODE_CUSTOM, p_font);
+	gp_callbacks->change_font(gp_context, FONT_MODE_CUSTOM, p_font);
 }
 
 /* Fetch joystick state */
 uint8_t get_joystick(void) {
-	return p_callbacks->get_joystick(p_callbacks->p_context);
+	return gp_callbacks->get_joystick(gp_context);
 }
 
 /* Check joystick state */
@@ -135,6 +136,11 @@ bool joystick_is_right(uint8_t state) {
 
 bool joystick_fire_pressed(uint8_t state) {
 	return ((state & (1 << 0)) != 0);
+}
+
+/* Show/hide cursor */
+void set_cursor_visible(bool visible) {
+	gp_callbacks->set_cursor_visible(gp_context, visible);
 }
 
 char * monotron_utoa(unsigned int value, char* str, int base)

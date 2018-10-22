@@ -199,7 +199,7 @@ static void pigfx_fgcol(unsigned int color) {
 }
 
 static void pigfx_hide_cursor(void) {
-
+    set_cursor_visible(false);
 }
 
 static void pigfx_movecursor(unsigned int row, unsigned int col) {

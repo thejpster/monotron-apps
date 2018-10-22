@@ -13,7 +13,7 @@ extern uint8_t getkey(void);
 #define NULL (void *) 0
 
 // Includes 256 bytes zero-page and 256 bytes stack
-#define RAM_SIZE (8 * 1024)
+#define RAM_SIZE (8000)
 
 //6502 defines
 //#define UNDOCUMENTED //when this is defined, undocumented opcodes are handled.

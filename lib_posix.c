@@ -7,14 +7,16 @@
 #include <fcntl.h>
 #include <signal.h>
 
-static void clean_up(int dummy);
 static void setup_console(void);
+static void clean_up(void);
+static void sigint_handler(int dummy);
 
 static struct termios oldt;
 
 int main(int argc, char** argv) {
 	setup_console();
-	signal(SIGINT, clean_up);
+	signal(SIGINT, sigint_handler);
+	atexit(clean_up);
 	return monotron_main();
 }
 
@@ -37,6 +39,11 @@ int kbhit(void)
 		return 1;
 	}
 	return 0;
+}
+
+int getchar(void) {
+	int ch = fgetc(stdin);
+	return ch;
 }
 
 /* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
@@ -123,10 +130,10 @@ int putchar(int ch) {
 		if (ch == 27) {
 			have_escape = true;
 		} else {
-			putc(ch, stdout);
+			fputc(ch, stdout);
+			fflush(stdout);
 		}
 	}
-	fflush(stdout);
 	return ch;
 }
 
@@ -199,6 +206,16 @@ bool joystick_fire_pressed(uint8_t state) {
 	return ((state & (1 << 0)) != 0);
 }
 
+/* Enable/Disable cursor */
+void set_cursor_visible(bool enabled) {
+	// Disable cursor
+	if (enabled) {
+		printf("\e[?25h");
+	} else {
+		printf("\e[?25l");
+	}
+}
+
 char * monotron_utoa(unsigned int value, char* str, int base)
 {
   const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -243,14 +260,16 @@ static void setup_console(void) {
 	newt = oldt;
 	newt.c_lflag &= ~(ICANON | ECHO);
 	tcsetattr(fd_stdin, TCSANOW, &newt);
-	// Disable cursor
-	printf("\e[?25l");
 }
 
-static void clean_up(int dummy) {
+static void clean_up(void) {
 	int fd_stdin = fileno(stdin);
 	tcsetattr(fd_stdin, TCSANOW, &oldt);
 	move_cursor(0, 0);
 	printf("\e[?25h\e[0m\e[2J");
 	exit(0);
+}
+
+static void sigint_handler(int dummy) {
+	ungetc(0x03, stdin);
 }
