@@ -12,10 +12,17 @@
 //! }
 //! ```
 
-#![no_std]
+// TODO add stuff here to make this build for Linux.
+// Shunt all the ARM stuff into an `monotron` module.
+// Put other stuff in a `pc` module.
+
+#![cfg_attr(target_os = "none", no_std)]
 #![deny(missing_docs)]
 
+#[cfg(target_os = "none")]
 use core::panic::PanicInfo;
+
+#[cfg(target_os = "none")]
 use core::sync::atomic::{self, Ordering};
 
 #[repr(C)]
@@ -33,6 +40,7 @@ pub struct Table {
     set_cursor_visible: extern "C" fn(*mut Context, u8),
 }
 
+#[cfg(target_os = "none")]
 #[link_section = ".entry_point"]
 #[no_mangle]
 /// The pointer Monotron calls to start running this application.
@@ -46,9 +54,12 @@ pub struct Host;
 pub struct Context;
 
 /// Pointer to the structure we're given by the host.
+#[cfg(target_os = "none")]
 static mut TABLE_POINTER: Option<&'static Table> = None;
+#[cfg(target_os = "none")]
 static mut TABLE_CONTEXT: Option<&'static mut Context> = None;
 
+#[cfg(target_os = "none")]
 #[no_mangle]
 /// The function called by the host to start us up. Does some setup, then
 /// jumps to a function called `main` defined by the actual application using
@@ -61,12 +72,25 @@ pub fn entry_point(table: *const Table, ctx: *mut Context) -> i32 {
     };
 
     extern "C" {
-        fn main() -> i32;
+        fn monotron_main() -> i32;
     }
     // call the user application
-    unsafe { main() }
+    unsafe { monotron_main() }
 }
 
+#[cfg(not(target_os = "none"))]
+/// Entry point when running under Linux or Windows
+pub fn main() {
+    extern "C" {
+        fn monotron_main() -> i32;
+    }
+    // call the user application
+    let res = unsafe { monotron_main() };
+    std::process::exit(res);
+}
+
+
+#[cfg(target_os = "none")]
 impl Table {
     fn get() -> (&'static Table, &'static mut Context) {
         unsafe {
@@ -79,6 +103,15 @@ impl Table {
     }
 }
 
+#[cfg(not(target_os = "none"))]
+impl core::fmt::Write for Host {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        print!("{}", s);
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "none")]
 impl core::fmt::Write for Host {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         let (tbl, ctx) = Table::get();
@@ -172,6 +205,64 @@ impl Frequency {
     }
 }
 
+#[cfg(not(target_os = "none"))]
+impl Host {
+    /// Send a single 8-bit character to the screen.
+    pub fn putchar(_ch: u8) {
+
+    }
+
+    /// Send a single 8-bit character to the screen.
+    pub fn puts(_str8bit: &[u8]) {
+
+    }
+
+    /// Return true if there is a keypress waiting (i.e. `readc` won't block).
+    pub fn kbhit() -> bool {
+        false
+    }
+
+    /// Read an 8-bit character from the console.
+    pub fn readc() -> u8 {
+        b'A'
+    }
+
+    /// Wait For Vertical Blanking Interval
+    pub fn wfvbi() {
+
+    }
+
+    /// Move the cursor on the screen.
+    pub fn move_cursor(_row: Row, _col: Col) {
+
+    }
+
+    /// Start playing a tone. It will continue.
+    pub fn play<F>(_frequency: F, _channel: Channel, _waveform: Waveform, _volume: u8)
+    where
+        F: Into<Frequency>,
+    {
+
+    }
+
+    /// Move the cursor on the screen.
+    pub fn set_font(_font: Font) -> Result<(), &'static str> {
+        Ok(())
+    }
+
+    /// Get the Joystick state
+    pub fn get_joystick() -> JoystickState {
+        JoystickState(0)
+    }
+
+    /// Show/hide the cursor
+    pub fn set_cursor_visible(_visible: bool) {
+
+    }
+
+}
+
+#[cfg(target_os = "none")]
 impl Host {
     /// Send a single 8-bit character to the screen.
     pub fn putchar(ch: u8) {
@@ -517,7 +608,7 @@ impl core::convert::Into<Frequency> for Note {
 
 #[inline(never)]
 #[panic_handler]
-#[cfg(feature = "print-panic")]
+#[cfg(all(feature = "print-panic", target_os = "none"))]
 fn panic(info: &PanicInfo) -> ! {
     use core::fmt::Write;
     // This uses about 15 KiB of our 24 KiB of RAM
@@ -533,7 +624,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[inline(never)]
 #[panic_handler]
-#[cfg(not(feature = "print-panic"))]
+#[cfg(all(not(feature = "print-panic"), target_os = "none"))]
 fn panic(_info: &PanicInfo) -> ! {
     loop {
         atomic::compiler_fence(Ordering::SeqCst);
