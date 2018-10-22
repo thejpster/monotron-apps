@@ -144,8 +144,8 @@ void put_connected_sixel(uint8_t ch);
 void put_separated_sixel(uint8_t ch);
 /* Write a null-terminated string to the screen at the current cursor position. */
 int puts(const char* s);
-/* Enable/Disable cursor */
-void set_cursor_enabled(bool enabled);
+/* Show/hide cursor */
+void set_cursor_visible(bool enabled);
 /* Get a key from the keyboard */
 int getchar(void);
 /* Wait until the screen has been drawn and we're in the vertical blanking interval */

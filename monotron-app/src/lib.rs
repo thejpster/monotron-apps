@@ -30,6 +30,7 @@ pub struct Table {
     play: extern "C" fn(*const Context, u32, u8, u8, u8) -> i32,
     change_font: extern "C" fn(*const Context, u32, *const u8),
     get_joystick: extern "C" fn(*const Context) -> u8,
+    set_cursor_visible: extern "C" fn(*mut Context, u8),
 }
 
 #[link_section = ".entry_point"]
@@ -246,6 +247,12 @@ impl Host {
         let (tbl, ctx) = Table::get();
         let b = (tbl.get_joystick)(ctx);
         JoystickState(b)
+    }
+
+    /// Show/hide the cursor
+    pub fn set_cursor_visible(visible: bool) {
+        let (tbl, ctx) = Table::get();
+        (tbl.set_cursor_visible)(ctx, if visible { 1 } else { 0 });
     }
 }
 

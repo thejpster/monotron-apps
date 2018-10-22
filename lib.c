@@ -15,6 +15,7 @@ struct callbacks_t {
 	int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
 	void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
 	uint8_t (*get_joystick)(void* p_context);
+	void (*set_cursor_visible)(void* p_context, uint8_t visible);
 };
 
 typedef int32_t(*entry_point_t)(const struct callbacks_t*, void*);
@@ -137,9 +138,9 @@ bool joystick_fire_pressed(uint8_t state) {
 	return ((state & (1 << 0)) != 0);
 }
 
-/* Enable/Disable cursor */
-void set_cursor_enabled(bool enabled) {
-	// Nothing
+/* Show/hide cursor */
+void set_cursor_visible(bool visible) {
+	gp_callbacks->set_cursor_visible(gp_context, visible);
 }
 
 char * monotron_utoa(unsigned int value, char* str, int base)

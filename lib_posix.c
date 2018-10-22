@@ -207,7 +207,7 @@ bool joystick_fire_pressed(uint8_t state) {
 }
 
 /* Enable/Disable cursor */
-void set_cursor_enabled(bool enabled) {
+void set_cursor_visible(bool enabled) {
 	// Disable cursor
 	if (enabled) {
 		printf("\e[?25h");
