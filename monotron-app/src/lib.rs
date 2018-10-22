@@ -21,7 +21,6 @@ use core::sync::atomic::{self, Ordering};
 #[repr(C)]
 /// The callbacks supplied by the Monotron OS.
 pub struct Table {
-    p_context: *const Context,
     putchar: extern "C" fn(*const Context, u8) -> i32,
     puts: extern "C" fn(*const Context, *const u8) -> i32,
     readc: extern "C" fn(*const Context) -> i32,
@@ -36,27 +35,28 @@ pub struct Table {
 #[link_section = ".entry_point"]
 #[no_mangle]
 /// The pointer Monotron calls to start running this application.
-pub static ENTRY_POINT: fn(*const Table) -> i32 = entry_point;
+pub static ENTRY_POINT: fn(*const Table, *mut Context) -> i32 = entry_point;
 
 /// Represents the Monotron we're running on. Can be passed to `write!` and
 /// friends.
 pub struct Host;
 
 /// An internal representation of the context we're given by the Host.
-struct Context;
+pub struct Context;
 
 /// Pointer to the structure we're given by the host.
 static mut TABLE_POINTER: Option<&'static Table> = None;
+static mut TABLE_CONTEXT: Option<&'static mut Context> = None;
 
 #[no_mangle]
 /// The function called by the host to start us up. Does some setup, then
 /// jumps to a function called `main` defined by the actual application using
 /// this crate.
-pub fn entry_point(raw_ctx: *const Table) -> i32 {
+pub fn entry_point(table: *const Table, ctx: *mut Context) -> i32 {
     // Turn the pointer into a reference and store in a static.
     unsafe {
-        let ctx = &*raw_ctx;
-        TABLE_POINTER = Some(ctx);
+        TABLE_POINTER = Some(&*table);
+        TABLE_CONTEXT = Some(&mut *ctx);
     };
 
     extern "C" {
@@ -67,10 +67,10 @@ pub fn entry_point(raw_ctx: *const Table) -> i32 {
 }
 
 impl Table {
-    fn get() -> &'static Table {
+    fn get() -> (&'static Table, &'static mut Context) {
         unsafe {
-            if let Some(tbl) = &TABLE_POINTER {
-                tbl
+            if let (Some(tbl), Some(ctx)) = (&TABLE_POINTER, &mut TABLE_CONTEXT) {
+                (tbl, ctx)
             } else {
                 panic!("Bad context");
             }
@@ -80,14 +80,14 @@ impl Table {
 
 impl core::fmt::Write for Host {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let tbl = Table::get();
+        let (tbl, ctx) = Table::get();
         for ch in s.chars() {
             if ch.is_ascii() {
                 // CodePage 850 and Unicode are the same here
-                (tbl.putchar)(tbl.p_context, ch as u32 as u8);
+                (tbl.putchar)(ctx, ch as u32 as u8);
             } else {
                 // TODO need a more intelligent mapping here
-                (tbl.putchar)(tbl.p_context, b'?');
+                (tbl.putchar)(ctx, b'?');
             }
         }
         Ok(())
@@ -174,40 +174,40 @@ impl Frequency {
 impl Host {
     /// Send a single 8-bit character to the screen.
     pub fn putchar(ch: u8) {
-        let tbl = Table::get();
-        (tbl.putchar)(tbl.p_context, ch);
+        let (tbl, ctx) = Table::get();
+        (tbl.putchar)(ctx, ch);
     }
 
     /// Send a single 8-bit character to the screen.
     pub fn puts(str8bit: &[u8]) {
-        let tbl = Table::get();
+        let (tbl, ctx) = Table::get();
         for &ch in str8bit {
-            (tbl.putchar)(tbl.p_context, ch);
+            (tbl.putchar)(ctx, ch);
         }
     }
 
     /// Return true if there is a keypress waiting (i.e. `readc` won't block).
     pub fn kbhit() -> bool {
-        let tbl = Table::get();
-        (tbl.kbhit)(tbl.p_context) != 0
+        let (tbl, ctx) = Table::get();
+        (tbl.kbhit)(ctx) != 0
     }
 
     /// Read an 8-bit character from the console.
     pub fn readc() -> u8 {
-        let tbl = Table::get();
-        (tbl.readc)(tbl.p_context) as u8
+        let (tbl, ctx) = Table::get();
+        (tbl.readc)(ctx) as u8
     }
 
     /// Wait For Vertical Blanking Interval
     pub fn wfvbi() {
-        let tbl = Table::get();
-        (tbl.wfvbi)(tbl.p_context)
+        let (tbl, ctx) = Table::get();
+        (tbl.wfvbi)(ctx)
     }
 
     /// Move the cursor on the screen.
     pub fn move_cursor(row: Row, col: Col) {
-        let tbl = Table::get();
-        (tbl.move_cursor)(tbl.p_context, row.0, col.0);
+        let (tbl, ctx) = Table::get();
+        (tbl.move_cursor)(ctx, row.0, col.0);
     }
 
     /// Start playing a tone. It will continue.
@@ -215,9 +215,9 @@ impl Host {
     where
         F: Into<Frequency>,
     {
-        let tbl = Table::get();
+        let (tbl, ctx) = Table::get();
         (tbl.play)(
-            tbl.p_context,
+            ctx,
             frequency.into().as_centi_hz(),
             channel as u8,
             waveform as u8,
@@ -227,15 +227,15 @@ impl Host {
 
     /// Move the cursor on the screen.
     pub fn set_font(font: Font) -> Result<(), &'static str> {
-        let tbl = Table::get();
+        let (tbl, ctx) = Table::get();
         match font {
-            Font::Normal => (tbl.change_font)(tbl.p_context, 0, core::ptr::null()),
-            Font::Teletext => (tbl.change_font)(tbl.p_context, 1, core::ptr::null()),
+            Font::Normal => (tbl.change_font)(ctx, 0, core::ptr::null()),
+            Font::Teletext => (tbl.change_font)(ctx, 1, core::ptr::null()),
             Font::Custom(ram) => {
                 if ram.len() != 4096 {
                     return Err("bad font length");
                 }
-                (tbl.change_font)(tbl.p_context, 2, ram.as_ptr());
+                (tbl.change_font)(ctx, 2, ram.as_ptr());
             }
         }
         Ok(())
@@ -243,8 +243,8 @@ impl Host {
 
     /// Get the Joystick state
     pub fn get_joystick() -> JoystickState {
-        let tbl = Table::get();
-        let b = (tbl.get_joystick)(tbl.p_context);
+        let (tbl, ctx) = Table::get();
+        let b = (tbl.get_joystick)(ctx);
         JoystickState(b)
     }
 }
