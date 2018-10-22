@@ -11,6 +11,27 @@
 //!     123
 //! }
 //! ```
+//!
+//! If you want to test your app on Linux, you'll need something like:
+//!
+//! ```
+//! #![cfg_attr(target_os = "none", no_std)]
+//! #![cfg_attr(target_os = "none", no_main)]
+//!
+//! use monotron_app::prelude::*;
+//! use monotron_app::Host;
+//!
+//! #[cfg(not(target_os = "none"))]
+//! pub fn main() {
+//!     std::process::exit(monotron_main());
+//! }
+//!
+//! #[no_mangle]
+//! pub extern "C" fn monotron_main() -> i32 {
+//!     write!(Host, "Hello, Rust!\n").unwrap();
+//!     0
+//! }
+//! ```
 
 // TODO add stuff here to make this build for Linux.
 // Shunt all the ARM stuff into an `monotron` module.
@@ -34,93 +55,12 @@ pub struct Table {
     set_cursor_visible: extern "C" fn(*mut Context, u8),
 }
 
-#[cfg(target_os = "none")]
-#[link_section = ".entry_point"]
-#[no_mangle]
-/// The pointer Monotron calls to start running this application.
-pub static ENTRY_POINT: fn(*const Table, *mut Context) -> i32 = entry_point;
-
 /// Represents the Monotron we're running on. Can be passed to `write!` and
 /// friends.
 pub struct Host;
 
 /// An internal representation of the context we're given by the Host.
 pub struct Context;
-
-/// Pointer to the structure we're given by the host.
-#[cfg(target_os = "none")]
-static mut TABLE_POINTER: Option<&'static Table> = None;
-#[cfg(target_os = "none")]
-static mut TABLE_CONTEXT: Option<&'static mut Context> = None;
-
-#[cfg(target_os = "none")]
-#[no_mangle]
-/// The function called by the host to start us up. Does some setup, then
-/// jumps to a function called `main` defined by the actual application using
-/// this crate.
-pub fn entry_point(table: *const Table, ctx: *mut Context) -> i32 {
-    // Turn the pointer into a reference and store in a static.
-    unsafe {
-        TABLE_POINTER = Some(&*table);
-        TABLE_CONTEXT = Some(&mut *ctx);
-    };
-
-    extern "C" {
-        fn monotron_main() -> i32;
-    }
-    // call the user application
-    unsafe { monotron_main() }
-}
-
-#[cfg(not(target_os = "none"))]
-/// Entry point when running under Linux or Windows
-pub fn main() {
-    extern "C" {
-        fn monotron_main() -> i32;
-    }
-    // call the user application
-    let res = unsafe { monotron_main() };
-    std::process::exit(res);
-}
-
-
-#[cfg(target_os = "none")]
-impl Table {
-    fn get() -> (&'static Table, &'static mut Context) {
-        unsafe {
-            if let (Some(tbl), Some(ctx)) = (&TABLE_POINTER, &mut TABLE_CONTEXT) {
-                (tbl, ctx)
-            } else {
-                panic!("Bad context");
-            }
-        }
-    }
-}
-
-#[cfg(not(target_os = "none"))]
-impl core::fmt::Write for Host {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        print!("{}", s);
-        Ok(())
-    }
-}
-
-#[cfg(target_os = "none")]
-impl core::fmt::Write for Host {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let (tbl, ctx) = Table::get();
-        for ch in s.chars() {
-            if ch.is_ascii() {
-                // CodePage 850 and Unicode are the same here
-                (tbl.putchar)(ctx, ch as u32 as u8);
-            } else {
-                // TODO need a more intelligent mapping here
-                (tbl.putchar)(ctx, b'?');
-            }
-        }
-        Ok(())
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 /// Represents a column on screen. Valid values are `0..=47`.
@@ -196,148 +136,6 @@ impl Frequency {
     /// Convert a number of centi-Hz into a Frequency.
     pub fn from_centi_hz(centi_hz: u32) -> Frequency {
         Frequency(centi_hz)
-    }
-}
-
-#[cfg(not(target_os = "none"))]
-impl Host {
-    /// Send a single 8-bit character to the screen.
-    pub fn putchar(_ch: u8) {
-
-    }
-
-    /// Send a single 8-bit character to the screen.
-    pub fn puts(_str8bit: &[u8]) {
-
-    }
-
-    /// Return true if there is a keypress waiting (i.e. `readc` won't block).
-    pub fn kbhit() -> bool {
-        false
-    }
-
-    /// Read an 8-bit character from the console.
-    pub fn readc() -> u8 {
-        b'A'
-    }
-
-    /// Wait For Vertical Blanking Interval
-    pub fn wfvbi() {
-
-    }
-
-    /// Move the cursor on the screen.
-    pub fn move_cursor(_row: Row, _col: Col) {
-
-    }
-
-    /// Start playing a tone. It will continue.
-    pub fn play<F>(_frequency: F, _channel: Channel, _waveform: Waveform, _volume: u8)
-    where
-        F: Into<Frequency>,
-    {
-
-    }
-
-    /// Move the cursor on the screen.
-    pub fn set_font(_font: Font) -> Result<(), &'static str> {
-        Ok(())
-    }
-
-    /// Get the Joystick state
-    pub fn get_joystick() -> JoystickState {
-        JoystickState(0)
-    }
-
-    /// Show/hide the cursor
-    pub fn set_cursor_visible(_visible: bool) {
-
-    }
-
-}
-
-#[cfg(target_os = "none")]
-impl Host {
-    /// Send a single 8-bit character to the screen.
-    pub fn putchar(ch: u8) {
-        let (tbl, ctx) = Table::get();
-        (tbl.putchar)(ctx, ch);
-    }
-
-    /// Send a single 8-bit character to the screen.
-    pub fn puts(str8bit: &[u8]) {
-        let (tbl, ctx) = Table::get();
-        for &ch in str8bit {
-            (tbl.putchar)(ctx, ch);
-        }
-    }
-
-    /// Return true if there is a keypress waiting (i.e. `readc` won't block).
-    pub fn kbhit() -> bool {
-        let (tbl, ctx) = Table::get();
-        (tbl.kbhit)(ctx) != 0
-    }
-
-    /// Read an 8-bit character from the console.
-    pub fn readc() -> u8 {
-        let (tbl, ctx) = Table::get();
-        (tbl.readc)(ctx) as u8
-    }
-
-    /// Wait For Vertical Blanking Interval
-    pub fn wfvbi() {
-        let (tbl, ctx) = Table::get();
-        (tbl.wfvbi)(ctx)
-    }
-
-    /// Move the cursor on the screen.
-    pub fn move_cursor(row: Row, col: Col) {
-        let (tbl, ctx) = Table::get();
-        (tbl.move_cursor)(ctx, row.0, col.0);
-    }
-
-    /// Start playing a tone. It will continue.
-    pub fn play<F>(frequency: F, channel: Channel, waveform: Waveform, volume: u8)
-    where
-        F: Into<Frequency>,
-    {
-        let (tbl, ctx) = Table::get();
-        (tbl.play)(
-            ctx,
-            frequency.into().as_centi_hz(),
-            channel as u8,
-            waveform as u8,
-            volume,
-        );
-    }
-
-    /// Move the cursor on the screen.
-    pub fn set_font(font: Font) -> Result<(), &'static str> {
-        let (tbl, ctx) = Table::get();
-        match font {
-            Font::Normal => (tbl.change_font)(ctx, 0, core::ptr::null()),
-            Font::Teletext => (tbl.change_font)(ctx, 1, core::ptr::null()),
-            Font::Custom(ram) => {
-                if ram.len() != 4096 {
-                    return Err("bad font length");
-                }
-                (tbl.change_font)(ctx, 2, ram.as_ptr());
-            }
-        }
-        Ok(())
-    }
-
-    /// Get the Joystick state
-    pub fn get_joystick() -> JoystickState {
-        let (tbl, ctx) = Table::get();
-        let b = (tbl.get_joystick)(ctx);
-        JoystickState(b)
-    }
-
-    /// Show/hide the cursor
-    pub fn set_cursor_visible(visible: bool) {
-        let (tbl, ctx) = Table::get();
-        (tbl.set_cursor_visible)(ctx, if visible { 1 } else { 0 });
     }
 }
 
@@ -601,7 +399,149 @@ impl core::convert::Into<Frequency> for Note {
 }
 
 #[cfg(target_os = "none")]
-mod panic {
+/// Implementation used when building code for the Montron
+pub mod monotron {
+    use super::*;
+
+    #[link_section = ".entry_point"]
+    #[no_mangle]
+    /// The pointer Monotron calls to start running this application.
+    pub static ENTRY_POINT: fn(*const Table, *mut Context) -> i32 = entry_point;
+    /// Pointer to the callback table we're given by the host.
+    static mut TABLE_POINTER: Option<&'static Table> = None;
+    /// Pointer to the context we're given by the host.
+    static mut TABLE_CONTEXT: Option<&'static mut Context> = None;
+
+    #[no_mangle]
+    /// The function called by the host to start us up. Does some setup, then
+    /// jumps to a function called `main` defined by the actual application using
+    /// this crate.
+    pub fn entry_point(table: *const Table, ctx: *mut Context) -> i32 {
+        // Turn the pointer into a reference and store in a static.
+        unsafe {
+            TABLE_POINTER = Some(&*table);
+            TABLE_CONTEXT = Some(&mut *ctx);
+        };
+
+        extern "C" {
+            fn monotron_main() -> i32;
+        }
+        // call the user application
+        unsafe { monotron_main() }
+    }
+
+    impl Table {
+        fn get() -> (&'static Table, &'static mut Context) {
+            unsafe {
+                if let (Some(tbl), Some(ctx)) = (&TABLE_POINTER, &mut TABLE_CONTEXT) {
+                    (tbl, ctx)
+                } else {
+                    panic!("Bad context");
+                }
+            }
+        }
+    }
+
+    impl core::fmt::Write for Host {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            let (tbl, ctx) = Table::get();
+            for ch in s.chars() {
+                if ch.is_ascii() {
+                    // CodePage 850 and Unicode are the same here
+                    (tbl.putchar)(ctx, ch as u32 as u8);
+                } else {
+                    // TODO need a more intelligent mapping here
+                    (tbl.putchar)(ctx, b'?');
+                }
+            }
+            Ok(())
+        }
+    }
+
+    impl Host {
+        /// Send a single 8-bit character to the screen.
+        pub fn putchar(ch: u8) {
+            let (tbl, ctx) = Table::get();
+            (tbl.putchar)(ctx, ch);
+        }
+
+        /// Send a single 8-bit character to the screen.
+        pub fn puts(str8bit: &[u8]) {
+            let (tbl, ctx) = Table::get();
+            for &ch in str8bit {
+                (tbl.putchar)(ctx, ch);
+            }
+        }
+
+        /// Return true if there is a keypress waiting (i.e. `readc` won't block).
+        pub fn kbhit() -> bool {
+            let (tbl, ctx) = Table::get();
+            (tbl.kbhit)(ctx) != 0
+        }
+
+        /// Read an 8-bit character from the console.
+        pub fn readc() -> u8 {
+            let (tbl, ctx) = Table::get();
+            (tbl.readc)(ctx) as u8
+        }
+
+        /// Wait For Vertical Blanking Interval
+        pub fn wfvbi() {
+            let (tbl, ctx) = Table::get();
+            (tbl.wfvbi)(ctx)
+        }
+
+        /// Move the cursor on the screen.
+        pub fn move_cursor(row: Row, col: Col) {
+            let (tbl, ctx) = Table::get();
+            (tbl.move_cursor)(ctx, row.0, col.0);
+        }
+
+        /// Start playing a tone. It will continue.
+        pub fn play<F>(frequency: F, channel: Channel, waveform: Waveform, volume: u8)
+        where
+            F: Into<Frequency>,
+        {
+            let (tbl, ctx) = Table::get();
+            (tbl.play)(
+                ctx,
+                frequency.into().as_centi_hz(),
+                channel as u8,
+                waveform as u8,
+                volume,
+            );
+        }
+
+        /// Move the cursor on the screen.
+        pub fn set_font(font: Font) -> Result<(), &'static str> {
+            let (tbl, ctx) = Table::get();
+            match font {
+                Font::Normal => (tbl.change_font)(ctx, 0, core::ptr::null()),
+                Font::Teletext => (tbl.change_font)(ctx, 1, core::ptr::null()),
+                Font::Custom(ram) => {
+                    if ram.len() != 4096 {
+                        return Err("bad font length");
+                    }
+                    (tbl.change_font)(ctx, 2, ram.as_ptr());
+                }
+            }
+            Ok(())
+        }
+
+        /// Get the Joystick state
+        pub fn get_joystick() -> JoystickState {
+            let (tbl, ctx) = Table::get();
+            let b = (tbl.get_joystick)(ctx);
+            JoystickState(b)
+        }
+
+        /// Show/hide the cursor
+        pub fn set_cursor_visible(visible: bool) {
+            let (tbl, ctx) = Table::get();
+            (tbl.set_cursor_visible)(ctx, if visible { 1 } else { 0 });
+        }
+    }
+
     use core::panic::PanicInfo;
     use core::sync::atomic::{self, Ordering};
 
@@ -629,6 +569,77 @@ mod panic {
             atomic::compiler_fence(Ordering::SeqCst);
         }
     }
+
+}
+
+#[cfg(not(target_os = "none"))]
+/// Implementation used when building code for Linux/Windows
+pub mod host {
+    use super::*;
+
+    impl core::fmt::Write for Host {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            print!("{}", s);
+            Ok(())
+        }
+    }
+
+    impl Host {
+        /// Send a single 8-bit character to the screen.
+        pub fn putchar(_ch: u8) {
+
+        }
+
+        /// Send a single 8-bit character to the screen.
+        pub fn puts(_str8bit: &[u8]) {
+
+        }
+
+        /// Return true if there is a keypress waiting (i.e. `readc` won't block).
+        pub fn kbhit() -> bool {
+            false
+        }
+
+        /// Read an 8-bit character from the console.
+        pub fn readc() -> u8 {
+            b'A'
+        }
+
+        /// Wait For Vertical Blanking Interval
+        pub fn wfvbi() {
+
+        }
+
+        /// Move the cursor on the screen.
+        pub fn move_cursor(_row: Row, _col: Col) {
+
+        }
+
+        /// Start playing a tone. It will continue.
+        pub fn play<F>(_frequency: F, _channel: Channel, _waveform: Waveform, _volume: u8)
+        where
+            F: Into<Frequency>,
+        {
+
+        }
+
+        /// Move the cursor on the screen.
+        pub fn set_font(_font: Font) -> Result<(), &'static str> {
+            Ok(())
+        }
+
+        /// Get the Joystick state
+        pub fn get_joystick() -> JoystickState {
+            JoystickState(0)
+        }
+
+        /// Show/hide the cursor
+        pub fn set_cursor_visible(_visible: bool) {
+
+        }
+
+    }
+
 }
 
 /// Useful things people should have in scope.
