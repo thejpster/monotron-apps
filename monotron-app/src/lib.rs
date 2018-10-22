@@ -19,12 +19,6 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![deny(missing_docs)]
 
-#[cfg(target_os = "none")]
-use core::panic::PanicInfo;
-
-#[cfg(target_os = "none")]
-use core::sync::atomic::{self, Ordering};
-
 #[repr(C)]
 /// The callbacks supplied by the Monotron OS.
 pub struct Table {
@@ -606,28 +600,34 @@ impl core::convert::Into<Frequency> for Note {
     }
 }
 
-#[inline(never)]
-#[panic_handler]
-#[cfg(all(feature = "print-panic", target_os = "none"))]
-fn panic(info: &PanicInfo) -> ! {
-    use core::fmt::Write;
-    // This uses about 15 KiB of our 24 KiB of RAM
-    write!(
-        Host,
-        "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W",
-        info
-    );
-    loop {
-        atomic::compiler_fence(Ordering::SeqCst);
-    }
-}
+#[cfg(target_os = "none")]
+mod panic {
+    use core::panic::PanicInfo;
+    use core::sync::atomic::{self, Ordering};
 
-#[inline(never)]
-#[panic_handler]
-#[cfg(all(not(feature = "print-panic"), target_os = "none"))]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {
-        atomic::compiler_fence(Ordering::SeqCst);
+    #[inline(never)]
+    #[panic_handler]
+    #[cfg(all(feature = "print-panic", target_os = "none"))]
+    fn panic(info: &PanicInfo) -> ! {
+        use core::fmt::Write;
+        // This uses about 15 KiB of our 24 KiB of RAM
+        write!(
+            Host,
+            "\u{001B}Z\u{001B}R\u{001B}kPanic: {:?}\u{001B}W",
+            info
+        );
+        loop {
+            atomic::compiler_fence(Ordering::SeqCst);
+        }
+    }
+
+    #[inline(never)]
+    #[panic_handler]
+    #[cfg(all(not(feature = "print-panic"), target_os = "none"))]
+    fn panic(_info: &PanicInfo) -> ! {
+        loop {
+            atomic::compiler_fence(Ordering::SeqCst);
+        }
     }
 }
 

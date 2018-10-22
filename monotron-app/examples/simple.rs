@@ -1,8 +1,14 @@
-#![no_std]
-#![no_main]
+#![cfg_attr(target_os = "none", no_std)]
+#![cfg_attr(target_os = "none", no_main)]
 
 use monotron_app::prelude::*;
 use monotron_app::Host;
+
+
+#[cfg(not(target_os = "none"))]
+pub fn main() {
+	std::process::exit(monotron_main());
+}
 
 #[no_mangle]
 pub extern "C" fn monotron_main() -> i32 {
