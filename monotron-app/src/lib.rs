@@ -40,6 +40,9 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![deny(missing_docs)]
 
+#![cfg(not(target_os = "none"))]
+use std as core;
+
 #[repr(C)]
 /// The callbacks supplied by the Monotron OS.
 pub struct Table {
@@ -576,23 +579,65 @@ pub mod monotron {
 /// Implementation used when building code for Linux/Windows
 pub mod host {
     use super::*;
+    use std::fmt::Write as _fmt_Write;
+    use std::io::Write as _io_Write;
+    use std::io::Read as _io_Read;
 
-    impl core::fmt::Write for Host {
-        fn write_str(&mut self, s: &str) -> core::fmt::Result {
-            print!("{}", s);
+    impl std::fmt::Write for Host {
+        fn write_str(&mut self, s: &str) -> std::fmt::Result {
+            let stdout = std::io::stdout();
+            let mut handle = stdout.lock();
+            let mut have_escape = false;
+            for ch in s.chars() {
+                if have_escape {
+                    match ch {
+                        'Z' | 'z' => write!(handle, "\x1B[2J").unwrap(),
+                        'K' => write!(handle, "\x1B[30m").unwrap(),
+                        'R' => write!(handle, "\x1B[31m").unwrap(),
+                        'G' => write!(handle, "\x1B[32m").unwrap(),
+                        'Y' => write!(handle, "\x1B[33m").unwrap(),
+                        'B' => write!(handle, "\x1B[34m").unwrap(),
+                        'M' => write!(handle, "\x1B[35m").unwrap(),
+                        'C' => write!(handle, "\x1B[36m").unwrap(),
+                        'W' => write!(handle, "\x1B[37m").unwrap(),
+                        'k' => write!(handle, "\x1B[40m").unwrap(),
+                        'r' => write!(handle, "\x1B[41m").unwrap(),
+                        'g' => write!(handle, "\x1B[42m").unwrap(),
+                        'y' => write!(handle, "\x1B[43m").unwrap(),
+                        'b' => write!(handle, "\x1B[44m").unwrap(),
+                        'm' => write!(handle, "\x1B[45m").unwrap(),
+                        'c' => write!(handle, "\x1B[46m").unwrap(),
+                        'w' => write!(handle, "\x1B[47m").unwrap(),
+                        _ => panic!("Unsupported escape sequence {}", ch),
+                    }
+                    have_escape = false;
+                } else {
+                    match ch {
+                        '\u{001B}' => have_escape = true,
+                        _ => write!(handle, "{}", ch).unwrap(),
+                    }
+                }
+            }
             Ok(())
         }
     }
 
     impl Host {
         /// Send a single 8-bit character to the screen.
-        pub fn putchar(_ch: u8) {
-
+        pub fn putchar(ch: u8) {
+            if ch <= 0x7F {
+                let unicode_scalar = ch as char;
+                write!(Host, "{}", unicode_scalar);
+            } else {
+                write!(Host, "?");
+            }
         }
 
         /// Send a single 8-bit character to the screen.
-        pub fn puts(_str8bit: &[u8]) {
-
+        pub fn puts(str8bit: &[u8]) {
+            for &ch in str8bit {
+                Host::putchar(ch);
+            }
         }
 
         /// Return true if there is a keypress waiting (i.e. `readc` won't block).
@@ -602,17 +647,21 @@ pub mod host {
 
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
-            b'A'
+            let stdin = std::io::stdin();
+            let mut handle = stdin.lock();
+            let mut buffer = [0; 1];
+            handle.read(&mut buffer).unwrap();
+            buffer[0]
         }
 
         /// Wait For Vertical Blanking Interval
         pub fn wfvbi() {
-
+            ::std::thread::sleep(::std::time::Duration::from_micros(1_000_000 / 60));
         }
 
         /// Move the cursor on the screen.
-        pub fn move_cursor(_row: Row, _col: Col) {
-
+        pub fn move_cursor(row: Row, col: Col) {
+            println!("\u{001B}[{};{}H", row.0 + 1, col.0 + 1);
         }
 
         /// Start playing a tone. It will continue.
@@ -634,7 +683,12 @@ pub mod host {
         }
 
         /// Show/hide the cursor
-        pub fn set_cursor_visible(_visible: bool) {
+        pub fn set_cursor_visible(visible: bool) {
+            if visible {
+                print!("\u{001B}[?25h");
+            } else {
+                print!("\u{001B}[?25l");
+            }
 
         }
 
