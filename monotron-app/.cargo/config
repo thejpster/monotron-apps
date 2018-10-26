@@ -2,5 +2,3 @@
 rustflags = [
   "-C", "link-arg=-Tmonotron-app.ld",
 ]
-[build]
-target = "thumbv7em-none-eabihf"
