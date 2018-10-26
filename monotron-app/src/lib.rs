@@ -39,7 +39,6 @@
 
 #![cfg_attr(target_os = "none", no_std)]
 #![deny(missing_docs)]
-
 #![cfg(not(target_os = "none"))]
 use std as core;
 
@@ -580,8 +579,8 @@ pub mod monotron {
 pub mod host {
     use super::*;
     use std::fmt::Write as _fmt_Write;
-    use std::io::Write as _io_Write;
     use std::io::Read as _io_Read;
+    use std::io::Write as _io_Write;
 
     impl std::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> std::fmt::Result {
@@ -689,9 +688,7 @@ pub mod host {
             } else {
                 print!("\u{001B}[?25l");
             }
-
         }
-
     }
 
 }

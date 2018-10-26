@@ -6,10 +6,9 @@ extern crate monotron_app;
 use monotron_app::prelude::*;
 use monotron_app::Host;
 
-
 #[cfg(not(target_os = "none"))]
 pub fn main() {
-	std::process::exit(monotron_main());
+    std::process::exit(monotron_main());
 }
 
 #[no_mangle]
