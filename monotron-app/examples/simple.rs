@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+extern crate monotron_app;
+
 use monotron_app::prelude::*;
 use monotron_app::Host;
 
