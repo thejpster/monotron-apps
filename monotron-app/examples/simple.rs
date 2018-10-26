@@ -1,6 +1,8 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 
+extern crate monotron_app;
+
 use monotron_app::prelude::*;
 use monotron_app::Host;
 
