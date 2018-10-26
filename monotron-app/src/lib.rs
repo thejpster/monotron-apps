@@ -14,7 +14,7 @@
 //!
 //! If you want to test your app on Linux, you'll need something like:
 //!
-//! ```
+//! ```ignore
 //! #![cfg_attr(target_os = "none", no_std)]
 //! #![cfg_attr(target_os = "none", no_main)]
 //!
@@ -33,13 +33,10 @@
 //! }
 //! ```
 
-// TODO add stuff here to make this build for Linux.
-// Shunt all the ARM stuff into an `monotron` module.
-// Put other stuff in a `pc` module.
-
 #![cfg_attr(target_os = "none", no_std)]
 #![deny(missing_docs)]
-#![cfg(not(target_os = "none"))]
+
+#[cfg(not(target_os = "none"))]
 use std as core;
 
 #[repr(C)]
