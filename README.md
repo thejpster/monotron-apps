@@ -8,4 +8,4 @@ testing).
 You can write Monotron applications in either C or Rust. You'll find examples
 of both here.
 
-[Monotron]: https://github.com/thejpster/monotron.
+[Monotron]: https://github.com/thejpster/monotron
