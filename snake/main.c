@@ -659,8 +659,22 @@ static void game(void) {
             beep(1000, 2, MAX_VOLUME / 4);
         }
 
-        // DELAY LOOP - runs at 10 frames per second
-        for(int i = 0; i < 6; i++) {
+        // DELAY LOOP
+        uint8_t easiness;
+        if (score >= 250) {
+            easiness = 1;
+        } else if (score >= 200) {
+            easiness = 2;
+        } else if (score >= 150) {
+            easiness = 3;
+        } else if (score >= 100) {
+            easiness = 4;
+        } else if (score >= 50) {
+            easiness = 5;
+        } else {
+            easiness = 6;
+        }
+        for(int i = 0; i < easiness; i++) {
             wait_frame();
         }
     }
