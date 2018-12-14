@@ -2,7 +2,6 @@
 name = "monotron-app"
 version = "0.1.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
-edition = "2018"
 
 [profile.release]
 lto = true
