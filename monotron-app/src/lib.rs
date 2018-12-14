@@ -623,9 +623,9 @@ pub mod host {
         pub fn putchar(ch: u8) {
             if ch <= 0x7F {
                 let unicode_scalar = ch as char;
-                write!(Host, "{}", unicode_scalar);
+                write!(Host, "{}", unicode_scalar).unwrap();
             } else {
-                write!(Host, "?");
+                write!(Host, "?").unwrap();
             }
         }
 
