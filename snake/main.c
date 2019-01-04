@@ -47,6 +47,7 @@
 #define FIELD_W 46
 #define FIELD_H 33
 #define SCORE_PER_APPLE 10
+#define NUM_HISCORES 10
 
 struct {
     int i;
@@ -153,7 +154,7 @@ static track_t TRACK2 = {
 static bool music_playing = false;
 static unsigned char field[FIELD_W * FIELD_H];
 static unsigned int score;
-static unsigned int hiscore;
+static unsigned int hiscores[NUM_HISCORES] = { 0 };
 static unsigned int rnd_x = 4;
 static unsigned int rnd_y = 113;
 static unsigned int rnd_z = 543;
@@ -553,10 +554,27 @@ static void start_music(void) {
     TRACK2.current_event = 0;
 }
 
+// Returns 1 if the high score was updated, 0 otherwise.
+// Highest score at the start of the array.
+static int update_hiscore(unsigned int new_score) {
+    for (int i = 0; i < NUM_HISCORES; i++) {
+        if (new_score > hiscores[i]) {
+            // Shift remaining scores down one position
+            memmove((hiscores+1), hiscores, NUM_HISCORES - i);
+            hiscores[i] = new_score;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void game_over(void) {
-    pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
+    int display_row = (FIELD_H / 2) - 4;
+    pigfx_movecursor(display_row, (FIELD_W - 10) / 2);
+    display_row += 1;
     pigfx_print("GAME OVER!");
-    pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
+    pigfx_movecursor(display_row, (FIELD_W - 31) / 2);
+    display_row += 2;
     pigfx_print("Press 'p' or Fire to try again.");
     beep(880, 30, MAX_VOLUME);
     wait_note();
@@ -564,24 +582,30 @@ static void game_over(void) {
     wait_note();
 
     // Handle high score stuff.
-
-    int new_hi_score = 0;
-    if (score > hiscore) {
-        hiscore = score;
-        new_hi_score = 1;
+    int new_hi_score = update_hiscore(score);
+    pigfx_movecursor(display_row, (FIELD_W - 14) / 2);
+    display_row += 1;
+    pigfx_print("HI SCORES:");
+    for (int i = 0; i < NUM_HISCORES; i++) {
+        pigfx_movecursor(display_row, (FIELD_W - 6) / 2);
+        display_row += 1;
+        pigfx_printnum(hiscores[i]);
     }
-    pigfx_movecursor((FIELD_H / 2) + 4, (FIELD_W - 14) / 2);
-    pigfx_print("HI SCORE: ");
+    display_row += 2;
 
-    pigfx_fgcol(APPLE_COLOR);
-    pigfx_printnum(hiscore);
-    if (new_hi_score) {
-        pigfx_movecursor((FIELD_H / 2) + 5, (FIELD_W - 14) / 2);
-        pigfx_print("NEW HI SCORE!");
-    }
-
+    unsigned int flashy_color = 0;
     // Wait for keypress
     for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
+        if (new_hi_score) {
+            pigfx_fgcol(flashy_color);
+            pigfx_movecursor(display_row, (FIELD_W - 14) / 2);
+            pigfx_print("NEW HI SCORE!");
+
+            flashy_color += 1;
+            if (flashy_color > BG_COLOR) {
+                flashy_color = 0;
+            }
+        }
         wait_frame();
     }
 }
