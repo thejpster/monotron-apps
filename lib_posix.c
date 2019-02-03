@@ -70,55 +70,55 @@ int putchar(int ch) {
 		switch (ch) {
 		case 'Z':
 		case 'z':
-			printf("\e[2J");
+			printf("\x1B[2J");
 			break;
 		case 'K':
-			printf("\e[30m");
+			printf("\x1B[30m");
 			break;
 		case 'R':
-			printf("\e[31m");
+			printf("\x1B[31m");
 			break;
 		case 'G':
-			printf("\e[32m");
+			printf("\x1B[32m");
 			break;
 		case 'Y':
-			printf("\e[33m");
+			printf("\x1B[33m");
 			break;
 		case 'B':
-			printf("\e[34m");
+			printf("\x1B[34m");
 			break;
 		case 'M':
-			printf("\e[35m");
+			printf("\x1B[35m");
 			break;
 		case 'C':
-			printf("\e[36m");
+			printf("\x1B[36m");
 			break;
 		case 'W':
-			printf("\e[37m");
+			printf("\x1B[37m");
 			break;
 		case 'k':
-			printf("\e[40m");
+			printf("\x1B[40m");
 			break;
 		case 'r':
-			printf("\e[41m");
+			printf("\x1B[41m");
 			break;
 		case 'g':
-			printf("\e[42m");
+			printf("\x1B[42m");
 			break;
 		case 'y':
-			printf("\e[43m");
+			printf("\x1B[43m");
 			break;
 		case 'b':
-			printf("\e[44m");
+			printf("\x1B[44m");
 			break;
 		case 'm':
-			printf("\e[45m");
+			printf("\x1B[45m");
 			break;
 		case 'c':
-			printf("\e[46m");
+			printf("\x1B[46m");
 			break;
 		case 'w':
-			printf("\e[47m");
+			printf("\x1B[47m");
 			break;
 		case '^':
 		case 'v':
@@ -161,7 +161,7 @@ void wfvbi(void) {
 
 
 void move_cursor(unsigned char row, unsigned char col) {
-	printf("\e[%u;%uH", row + 1, col + 1);
+	printf("\x1B[%u;%uH", row + 1, col + 1);
 }
 
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume) {
@@ -215,9 +215,9 @@ bool joystick_fire_pressed(uint8_t state) {
 void set_cursor_visible(bool enabled) {
 	// Disable cursor
 	if (enabled) {
-		printf("\e[?25h");
+		printf("\x1B[?25h");
 	} else {
-		printf("\e[?25l");
+		printf("\x1B[?25l");
 	}
 }
 
@@ -271,7 +271,7 @@ static void clean_up(void) {
 	int fd_stdin = fileno(stdin);
 	tcsetattr(fd_stdin, TCSANOW, &oldt);
 	move_cursor(0, 0);
-	printf("\e[?25h\e[0m\e[2J");
+	printf("\x1B[?25h\x1B[0m\x1B[2J");
 	exit(0);
 }
 

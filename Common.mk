@@ -1,4 +1,4 @@
-CFLAGS = -fno-builtin -std=c11 -Wall -Werror -I..
+CFLAGS = -fno-builtin -std=c11 -Wall -Werror -pedantic -I..
 ARM_CFLAGS = $(CFLAGS) -mcpu=cortex-m4 -nostartfiles -mthumb -Os
 POSIX_CFLAGS = $(CFLAGS) -g -D_POSIX_C_SOURCE=199309L
 
