@@ -120,8 +120,13 @@ int putchar(int ch) {
 		case 'w':
 			printf("\e[47m");
 			break;
+		case '^':
+		case 'v':
+		case '-':
+			// Ignore these codes (double height text)
+			break;
 		default:
-			printf("ERR: Unsupported code '%c' (%u)", ch, ch);
+			fprintf(stderr, "ERR: Unsupported code '%c' (%u)\n", ch, ch);
 			abort();
 			break;
 		}
