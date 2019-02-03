@@ -1,3 +1,12 @@
+/**
+ * Monotron Application linker script.
+ *
+ * Copyright (c) Jonathan 'theJPster' Pallant 2019
+ * Copyright (c) Rust Embedded Working Group 2018
+ *
+ * Available under the MIT or Apache 2.0 licence, at your option.
+ */
+
 MEMORY
 {
     SRAM (rwx) : ORIGIN = 0x20002000, LENGTH = 0x00006000

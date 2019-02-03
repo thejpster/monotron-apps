@@ -1,3 +1,13 @@
+/**
+ * Monotron API implementation for Linux/POSIX systems.
+ *
+ * Assumes you have an ANSI capable terminal.
+ *
+ * Copyright (c) Jonathan 'theJPster' Pallant 2019
+ *
+ * Available under the MIT or Apache 2.0 licence, at your option.
+ */
+
 #include <monotron.h>
 #include <string.h>
 #include <stdio.h>
