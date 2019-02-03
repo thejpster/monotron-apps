@@ -1,11 +1,66 @@
-#include <monotron.h>
+/**
+ * Monotron slide-demo / demonstration.
+ *
+ * Copyright (c) Jonathan 'theJPster' Pallant 2019
+ *
+ * Available under the MIT or Apache 2.0 licence, at your option.
+ */
+
+/******************************************************************************
+ *
+ * System Header Files
+ *
+ *****************************************************************************/
 #include <stdbool.h>
 #include <string.h>
 
-#define PAGE_SECONDS 10
+/******************************************************************************
+ *
+ * Interface Header Files
+ *
+ *****************************************************************************/
+#include <monotron.h>
 
-//  0         1         2         3         4
-//  0123456789012345678901234567890123456789012345678
+/******************************************************************************
+ *
+ * Local Header Files
+ *
+ *****************************************************************************/
+// None
+
+/******************************************************************************
+ *
+ * Macros
+ *
+ *****************************************************************************/
+#define PAGE_SECONDS 10U
+
+/******************************************************************************
+ *
+ * Public Data
+ *
+ *****************************************************************************/
+// None
+
+/******************************************************************************
+ *
+ * Private Types
+ *
+ *****************************************************************************/
+// None
+
+/******************************************************************************
+ *
+ * Private Function Prototypes
+ *
+ *****************************************************************************/
+static void delay_frames(uint32_t frames);
+
+/******************************************************************************
+ *
+ * Private Data
+ *
+ *****************************************************************************/
 static const char PAGE_1[] = ""\
 	TERM_CLS TERM_FG_YELLOW TERM_DOUBLE_UPPER \
 	"Welcome to the Monotron!\n" \
@@ -59,9 +114,6 @@ static const char PAGE_2[] = "" \
 	"\n";
 
 static const char PAGE_3[] = "" \
-"\n";
-
-static const char PAGE_4[] = "" \
 	TERM_CLS TERM_FG_GREEN TERM_DOUBLE_UPPER "Learn more:\n" \
 	TERM_FG_RED TERM_DOUBLE_LOWER "Learn more:\n" \
 	TERM_DOUBLE_CANCEL "\n" \
@@ -76,34 +128,62 @@ static const char PAGE_4[] = "" \
 	"  " TERM_FG_YELLOW "o" TERM_FG_CYAN " https://twitter.com/therealjpster\n" \
 	TERM_FG_WHITE "\n";
 
-static void delay_frames(unsigned int frames);
-static bool run = true;
+static bool g_run = true;
 
+/******************************************************************************
+ *
+ * Public Functions
+ *
+ *****************************************************************************/
+
+/**
+ * Entry point for Monotron applications.
+ *
+ * @return 0 on successful termination, any else means there was an error.
+ */
 int monotron_main(void) {
-	const char* pages[] = { PAGE_1, PAGE_2, PAGE_3, PAGE_4 };
-	while(true) {
+	const char* pages[] = { PAGE_1, PAGE_2, PAGE_3 };
+	int result = 0;
+	while(g_run) {
 		for(size_t idx = 0; idx < ELEMOF(pages); idx++) {
 			puts(pages[idx]);
 			delay_frames(FRAMES_PER_SECOND * PAGE_SECONDS);
-			if (!run) {
-				return 0;
+			if (!g_run) {
+				break;
 			}
 		}
 	}
-	return 1;
+	return result;
 }
 
-static void delay_frames(unsigned int frames) {
-	for(unsigned int x = 0; x < frames; x++) {
+/******************************************************************************
+ *
+ * Private Functions
+ *
+ *****************************************************************************/
+
+/**
+ * Delay for a certain number of 60 Hz video frames. Uses the `wfvbi` syscall.
+ *
+ * @param frames Number of 60 Hz video frames to pause for
+ */
+static void delay_frames(uint32_t frames) {
+	for(uint32_t x = 0; x < frames; x++) {
 		if (kbhit()) {
 			int ch = getchar();
 			// Space bar only skips a slide
 			// Anything else to quit
 			if (ch != ' ') {
-				run = false;
+				g_run = false;
 			}
 			return;
 		}
 		wfvbi();
 	}
 }
+
+/******************************************************************************
+ *
+ * End of File
+ *
+ *****************************************************************************/
