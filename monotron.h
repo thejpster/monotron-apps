@@ -20,6 +20,28 @@ typedef enum waveform_t {
 #define ELEMOF(x) (sizeof (x) / sizeof (x)[0])
 #define NUMELTS ELEMOF
 
+#define TERM_ESCAPE_STR "\x1B"
+#define TERM_FG_RED TERM_ESCAPE_STR "R"
+#define TERM_FG_GREEN TERM_ESCAPE_STR "G"
+#define TERM_FG_BLUE TERM_ESCAPE_STR "B"
+#define TERM_FG_BLACK TERM_ESCAPE_STR "B"
+#define TERM_FG_WHITE TERM_ESCAPE_STR "W"
+#define TERM_FG_YELLOW TERM_ESCAPE_STR "Y"
+#define TERM_FG_CYAN TERM_ESCAPE_STR "C"
+#define TERM_FG_MAGENTA TERM_ESCAPE_STR "M"
+#define TERM_BG_RED TERM_ESCAPE_STR "r"
+#define TERM_BG_GREEN TERM_ESCAPE_STR "g"
+#define TERM_BG_BLUE TERM_ESCAPE_STR "b"
+#define TERM_BG_BLACK TERM_ESCAPE_STR "b"
+#define TERM_BG_WHITE TERM_ESCAPE_STR "w"
+#define TERM_BG_YELLOW TERM_ESCAPE_STR "y"
+#define TERM_BG_CYAN TERM_ESCAPE_STR "c"
+#define TERM_BG_MAGENTA TERM_ESCAPE_STR "m"
+#define TERM_DOUBLE_UPPER TERM_ESCAPE_STR "^"
+#define TERM_DOUBLE_LOWER TERM_ESCAPE_STR "v"
+#define TERM_DOUBLE_CANCEL TERM_ESCAPE_STR "-"
+#define TERM_CLS TERM_ESCAPE_STR "Z"
+
 // Note frequencies are in Centi-hertz
 #define Note_Rest  0
 #define Note_C0  1635
