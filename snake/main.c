@@ -260,7 +260,7 @@ static void update_score(unsigned int score) {
 static void splash_screen(void) {
     font_teletext();
     // Clear the screen (white on black)
-    puts("\ek\eW\eZ\eG\n\n");
+    puts(TERM_BG_BLACK TERM_FG_WHITE TERM_CLS TERM_FG_GREEN "\n\n");
 
     // Draw the logo
     static const uint8_t sixels[]  = {
@@ -300,10 +300,10 @@ static void splash_screen(void) {
         put_separated_sixel(sixels[i]);
     }
     puts(
-        "\n\n\n\eY"
+        "\n\n\n" TERM_FG_YELLOW
         "Original for RC2014, Copyright F.Bergamasco 2016\n"
         "Monotron version, Copyright J.Pallant 2018\n"
-        "\eC\n"
+        TERM_FG_CYAN "\n"
         "Press 'p' or Fire to start..."
     );
 

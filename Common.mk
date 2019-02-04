@@ -1,4 +1,10 @@
-CFLAGS = -fno-builtin -std=c11 -Wall -Werror -I..
+# Build system template for the Monotron API examples
+#
+# Copyright (c) Jonathan 'theJPster' Pallant 2019
+#
+# Available under the MIT or Apache 2.0 licence, at your option.
+
+CFLAGS = -fno-builtin -std=c11 -Wall -Werror -pedantic -I..
 ARM_CFLAGS = $(CFLAGS) -mcpu=cortex-m4 -nostartfiles -mthumb -Os
 POSIX_CFLAGS = $(CFLAGS) -g -D_POSIX_C_SOURCE=199309L
 
@@ -6,7 +12,6 @@ ARM_CC = arm-none-eabi-gcc
 OUT_DIR = ./bin
 MKDIR_P = mkdir -p
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-
 
 all: directories $(OUT_DIR)/app.bin $(OUT_DIR)/linux
 

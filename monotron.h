@@ -1,24 +1,52 @@
+/**
+ * Monotron API header file.
+ *
+ * Copyright (c) Jonathan 'theJPster' Pallant 2019
+ *
+ * Available under the MIT or Apache 2.0 licence, at your option.
+ */
+
+/******************************************************************************
+ *
+ * Required Header Files
+ *
+ *****************************************************************************/
+
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum channel_t {
-	CHANNEL_0 = 0,
-	CHANNEL_1 = 1,
-	CHANNEL_2 = 2,
-} channel_t;
-
-typedef enum waveform_t {
-	WAVEFORM_SQUARE = 0,
-	WAVEFORM_SINE = 1,
-	WAVEFORM_SAWTOOTH = 2,
-	WAVEFORM_NOISE = 3,
-} waveform_t;
-
+/******************************************************************************
+ *
+ * Public Macros
+ *
+ *****************************************************************************/
 #define MAX_VOLUME 255
 #define RAND_MAX 32768
 #define FRAMES_PER_SECOND 60
 #define ELEMOF(x) (sizeof (x) / sizeof (x)[0])
 #define NUMELTS ELEMOF
+
+#define TERM_ESCAPE_STR "\x1B"
+#define TERM_FG_RED TERM_ESCAPE_STR "R"
+#define TERM_FG_GREEN TERM_ESCAPE_STR "G"
+#define TERM_FG_BLUE TERM_ESCAPE_STR "B"
+#define TERM_FG_BLACK TERM_ESCAPE_STR "K"
+#define TERM_FG_WHITE TERM_ESCAPE_STR "W"
+#define TERM_FG_YELLOW TERM_ESCAPE_STR "Y"
+#define TERM_FG_CYAN TERM_ESCAPE_STR "C"
+#define TERM_FG_MAGENTA TERM_ESCAPE_STR "M"
+#define TERM_BG_RED TERM_ESCAPE_STR "r"
+#define TERM_BG_GREEN TERM_ESCAPE_STR "g"
+#define TERM_BG_BLUE TERM_ESCAPE_STR "b"
+#define TERM_BG_BLACK TERM_ESCAPE_STR "k"
+#define TERM_BG_WHITE TERM_ESCAPE_STR "w"
+#define TERM_BG_YELLOW TERM_ESCAPE_STR "y"
+#define TERM_BG_CYAN TERM_ESCAPE_STR "c"
+#define TERM_BG_MAGENTA TERM_ESCAPE_STR "m"
+#define TERM_DOUBLE_UPPER TERM_ESCAPE_STR "^"
+#define TERM_DOUBLE_LOWER TERM_ESCAPE_STR "v"
+#define TERM_DOUBLE_CANCEL TERM_ESCAPE_STR "-"
+#define TERM_CLS TERM_ESCAPE_STR "Z"
 
 // Note frequencies are in Centi-hertz
 #define Note_Rest  0
@@ -131,46 +159,199 @@ typedef enum waveform_t {
 #define Note_AsBb8  745862
 #define Note_B8  790213
 
-/* The newlib version seems to crash...*/
-char * monotron_utoa(unsigned int value, char* str, int base);
+/******************************************************************************
+ *
+ * Public Types
+ *
+ *****************************************************************************/
 
-/* Entry point to the user's program */
+/**
+ * Describes the possible synth channels.
+ */
+typedef enum channel_t {
+	CHANNEL_0 = 0,
+	CHANNEL_1 = 1,
+	CHANNEL_2 = 2,
+} channel_t;
+
+/**
+ * Describes the possible waveforms we can get from the synth.
+ */
+typedef enum waveform_t {
+	WAVEFORM_SQUARE = 0,
+	WAVEFORM_SINE = 1,
+	WAVEFORM_SAWTOOTH = 2,
+	WAVEFORM_NOISE = 3,
+} waveform_t;
+
+/******************************************************************************
+ *
+ * Public Function Prototypes
+ *
+ *****************************************************************************/
+
+/**
+ * Convert a number to a string.
+ *
+ * @param value the number to convert
+ * @param str the buffer to write the number to (must be large enough!)
+ * @param base usually 10 for decimal, or 16 for hexadecimal
+ * @return the str pointer
+ */
+char* monotron_utoa(unsigned int value, char* str, int base);
+
+/**
+ * Entry point to the user's program
+ *
+ * @return 0 for successful termination, else there was an error.
+ */
 int monotron_main(void);
-/* Write a single character to the screen at the current cursor position. */
+
+/**
+ * Write a single character to the screen at the current cursor position.
+ *
+ * @param ch the character to write.
+ * @return TODO Not sure what this returns
+ */
 int putchar(int ch);
-/* Write a connected sixel to the screen. Assumes you have the Teletext font selected. */
+
+/**
+ * Write a connected sixel to the screen. Assumes you have the Teletext font selected.
+ *
+ * @param ch the numeric value of the sixel to write (0..63)
+ */
 void put_connected_sixel(uint8_t ch);
-/* Write a separated sixel to the screen. Assumes you have the Teletext font selected. */
+
+/**
+ * Write a separated sixel to the screen. Assumes you have the Teletext font selected.
+ *
+ * @param ch the numeric value of the sixel to write (0..63)
+ */
 void put_separated_sixel(uint8_t ch);
-/* Write a null-terminated string to the screen at the current cursor position. */
+
+/**
+ * Write a null-terminated string to the screen at the current cursor position.
+ *
+ * @param s the null-terminated ASCII string to display
+ * @return TODO Not sure what this returns
+ */
 int puts(const char* s);
-/* Show/hide cursor */
+
+/**
+ * Show/hide cursor
+ *
+ * @param visible If true, cursor is visible, else cursor is invisible
+ */
 void set_cursor_visible(bool enabled);
-/* Get a key from the keyboard */
+
+/**
+ * Get a key from the keyboard. Blocks if no keypress in buffer.
+ *
+ * @return the next buffered keypress.
+ */
 int getchar(void);
-/* Wait until the screen has been drawn and we're in the vertical blanking interval */
+
+/**
+ * Wait until the screen has been drawn and we're in the vertical blanking interval
+ */
 void wfvbi(void);
-/* Get a random number from 0 .. RAND_MAX */
+
+/**
+ * Get a random number from 0 .. RAND_MAX
+ *
+ * @return the new random number
+ */
 int rand(void);
-/* See the random number generator */
+
+/**
+ * Seed the random number generator
+ *
+ * @param the seed value
+ */
 void srand(unsigned int seed);
-/* Return 1 if a key has been pressed (i.e. getchar() won't blocK), 0 otherwise */
+
+/**
+ * Check if a key has been pressed.
+ *
+ * @return 1 if a key has been pressed (i.e. getchar() won't blocK), 0 otherwise
+ */
 int kbhit(void);
-/* Set where the next character will appear on screen */
+
+/**
+ * Set where the next character will appear on screen.
+ *
+ * @param row the Y-value to set (0..35)
+ * @param col the X-value to set (0..47)
+ */
 void move_cursor(unsigned char row, unsigned char col);
-/* Configure one channel of the synthesiser to continuously play a note */
+
+/**
+ * Configure one channel of the synthesiser to continuously play a note.
+ *
+ * @param frequency the frequency of the note to play (in centi-hertz)
+ * @param channel the channel to play the note on
+ * @param waveform the waveform to play this note with
+ * @param volume the volume to play this note at (0..255)
+ */
 int play(uint32_t frequency, channel_t channel, waveform_t waveform, uint8_t volume);
-/* Switch to the CodePage 850 font */
+
+/**
+ * Switch to the CodePage 850 font
+ */
 void font_normal(void);
-/* Switch to the Teletext font */
+
+/**
+ * Switch to the Teletext font
+ */
 void font_teletext(void);
-/* Supply 4096 bytes of font data (16 bytes per char, 256 chars) */
+
+/**
+ * Set a custom font. Supply 4096 bytes of font data (16 bytes per char, 256
+ * chars)
+ *
+ * @param p_font pointer to 4 KiB of font data
+ */
 void font_custom(const void* p_font);
-/* Fetch joystick state */
+
+/**
+ * Capture current joystick state.
+ * @return captured state
+ */
 uint8_t get_joystick(void);
-/* Check joystick state */
+
+/**
+ * Check if the Joystick was pressed up when the given state was captured.
+ * @return true if up was pressed, else false.
+ */
 bool joystick_is_up(uint8_t state);
+
+/**
+ * Check if the Joystick was pressed down when the given state was captured.
+ * @return true if down was pressed, else false.
+ */
 bool joystick_is_down(uint8_t state);
+
+/**
+ * Check if the Joystick was pressed left when the given state was captured.
+ * @return true if down was pressed, else false.
+ */
 bool joystick_is_left(uint8_t state);
+
+/**
+ * Check if the Joystick was pressed right when the given state was captured.
+ * @return true if down was pressed, else false.
+ */
 bool joystick_is_right(uint8_t state);
+
+/**
+ * Check if the Joystick fire button was pressed when the given state was
+ * captured.
+ * @return true if button is pressed, else false.
+ */
 bool joystick_fire_pressed(uint8_t state);
+
+/******************************************************************************
+ *
+ * End of File
+ *
+ *****************************************************************************/
