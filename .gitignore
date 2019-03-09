@@ -3,5 +3,6 @@
 */app.bin
 */bin
 **/target/
+**/Cargo.lock
 
 
