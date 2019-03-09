@@ -593,7 +593,13 @@ pub mod host {
             for ch in s.chars() {
                 if unsafe { HAVE_ESCAPE } {
                     match ch {
-                        'Z' | 'z' => { println!("Clear!"); clear(); },
+                        'Z' | 'z' => {
+                            let mut attr = 0;
+                            let mut pair = 0;
+                            attr_get(&mut attr, &mut pair);
+                            bkgd(COLOR_PAIR(pair));
+                            clear();
+                        },
                         'R' => Host::set_bg(0),
                         'G' => Host::set_bg(1),
                         'B' => Host::set_bg(2),
