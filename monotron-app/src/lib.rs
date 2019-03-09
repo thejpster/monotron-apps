@@ -39,6 +39,9 @@
 #[cfg(not(target_os = "none"))]
 use std as core;
 
+#[cfg(not(target_os = "none"))]
+extern crate ncurses;
+
 #[repr(C)]
 /// The callbacks supplied by the Monotron OS.
 pub struct Table {
@@ -63,11 +66,11 @@ pub struct Context;
 
 #[derive(Debug, Clone, Copy)]
 /// Represents a column on screen. Valid values are `0..=47`.
-pub struct Col(u8);
+pub struct Col(pub u8);
 
 #[derive(Debug, Clone, Copy)]
 /// Represents a row on screen. Valid values are `0..=36`.
-pub struct Row(u8);
+pub struct Row(pub u8);
 
 #[derive(Debug, Clone, Copy)]
 /// Represents a font we can set the screen to use. The whole screen uses the
@@ -458,6 +461,11 @@ pub mod monotron {
     }
 
     impl Host {
+        /// Get the (width, height) of the Monotron TTY
+        pub fn getsize() -> (u16, u16) {
+            (48, 36)
+        }
+
         /// Send a single 8-bit character to the screen.
         pub fn putchar(ch: u8) {
             let (tbl, ctx) = Table::get();
@@ -576,49 +584,112 @@ pub mod monotron {
 pub mod host {
     use super::*;
     use std::fmt::Write as _fmt_Write;
-    use std::io::Read as _io_Read;
-    use std::io::Write as _io_Write;
+    use ncurses::*;
 
     impl std::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> std::fmt::Result {
-            let stdout = std::io::stdout();
-            let mut handle = stdout.lock();
-            let mut have_escape = false;
+            use ncurses::*;
+            static mut HAVE_ESCAPE: bool = false;
             for ch in s.chars() {
-                if have_escape {
+                if unsafe { HAVE_ESCAPE } {
                     match ch {
-                        'Z' | 'z' => write!(handle, "\x1B[2J").unwrap(),
-                        'K' => write!(handle, "\x1B[30m").unwrap(),
-                        'R' => write!(handle, "\x1B[31m").unwrap(),
-                        'G' => write!(handle, "\x1B[32m").unwrap(),
-                        'Y' => write!(handle, "\x1B[33m").unwrap(),
-                        'B' => write!(handle, "\x1B[34m").unwrap(),
-                        'M' => write!(handle, "\x1B[35m").unwrap(),
-                        'C' => write!(handle, "\x1B[36m").unwrap(),
-                        'W' => write!(handle, "\x1B[37m").unwrap(),
-                        'k' => write!(handle, "\x1B[40m").unwrap(),
-                        'r' => write!(handle, "\x1B[41m").unwrap(),
-                        'g' => write!(handle, "\x1B[42m").unwrap(),
-                        'y' => write!(handle, "\x1B[43m").unwrap(),
-                        'b' => write!(handle, "\x1B[44m").unwrap(),
-                        'm' => write!(handle, "\x1B[45m").unwrap(),
-                        'c' => write!(handle, "\x1B[46m").unwrap(),
-                        'w' => write!(handle, "\x1B[47m").unwrap(),
+                        'Z' | 'z' => {
+                            let mut attr = 0;
+                            let mut pair = 0;
+                            attr_get(&mut attr, &mut pair);
+                            bkgd(COLOR_PAIR(pair));
+                            clear();
+                        },
+                        'R' => Host::set_bg(0),
+                        'G' => Host::set_bg(1),
+                        'B' => Host::set_bg(2),
+                        'C' => Host::set_bg(3),
+                        'M' => Host::set_bg(4),
+                        'Y' => Host::set_bg(5),
+                        'W' => Host::set_bg(6),
+                        'K' => Host::set_bg(7),
+                        'r' => Host::set_fg(0),
+                        'g' => Host::set_fg(1),
+                        'b' => Host::set_fg(2),
+                        'c' => Host::set_fg(3),
+                        'm' => Host::set_fg(4),
+                        'y' => Host::set_fg(5),
+                        'w' => Host::set_fg(6),
+                        'k' => Host::set_fg(7),
+                        /* double height top */
+                        '^' => { },
+                        /* double height bottom */
+                        'v' => { },
+                        /* normal height bottom */
+                        '-' => { },
                         _ => panic!("Unsupported escape sequence {}", ch),
                     }
-                    have_escape = false;
+                    unsafe { HAVE_ESCAPE = false };
                 } else {
                     match ch {
-                        '\u{001B}' => have_escape = true,
-                        _ => write!(handle, "{}", ch).unwrap(),
+                        '\u{001B}' => {
+                            unsafe { HAVE_ESCAPE = true };
+                        },
+                        _ => { addch(ch as u8 as u64); },
                     }
                 }
             }
+            refresh();
             Ok(())
         }
     }
 
     impl Host {
+        /// Get the (width, height) of the Monotron TTY
+        pub fn getsize() -> (u16, u16) {
+            (48, 36)
+        }
+
+        /// Call once at start-up to configure terminal
+        pub fn init() {
+            initscr();
+            cbreak();
+            noecho();
+            nodelay(stdscr(), true);
+            scrollok(stdscr(), true);
+            // Set up 64 colour combinations
+            // The colours are RGBCMYKW in that order
+            // The index is [(fg * 8) + bg]
+            start_color();
+            let colors = [ COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_CYAN, COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE, COLOR_BLACK ];
+            for (fgi, fg) in colors.iter().enumerate() {
+                for (bgi, bg) in colors.iter().enumerate() {
+                    let pair = ((bgi * 8) + fgi) + 1;
+                    init_pair(pair as i16, *fg, *bg);
+                }
+            }
+            attron(COLOR_PAIR((7*8) + 6 + 1));
+            resizeterm(36, 48);
+        }
+
+        fn set_fg(fgi: i16) {
+            let mut attr = 0;
+            let mut pair = 0;
+            attr_get(&mut attr, &mut pair);
+            let bgi = (pair - 1) / 8 ;
+            let pair = ((bgi * 8) + fgi) + 1;
+            attron(COLOR_PAIR(pair));
+        }
+
+        fn set_bg(bgi: i16) {
+            let mut attr = 0;
+            let mut pair = 0;
+            attr_get(&mut attr, &mut pair);
+            let fgi = (pair - 1) & 7;
+            let pair = ((bgi * 8) + fgi) + 1;
+            attron(COLOR_PAIR(pair));
+        }
+
+        /// Disable ncurses
+        pub fn deinit() {
+            endwin();
+        }
+
         /// Send a single 8-bit character to the screen.
         pub fn putchar(ch: u8) {
             if ch <= 0x7F {
@@ -638,16 +709,19 @@ pub mod host {
 
         /// Return true if there is a keypress waiting (i.e. `readc` won't block).
         pub fn kbhit() -> bool {
-            false
+            let ch = getch();
+            if ch != ERR {
+                ungetch(ch);
+                true
+            } else {
+                false
+            }
         }
 
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
-            let stdin = std::io::stdin();
-            let mut handle = stdin.lock();
-            let mut buffer = [0; 1];
-            handle.read(&mut buffer).unwrap();
-            buffer[0]
+            let ch = getch();
+            ch as u8
         }
 
         /// Wait For Vertical Blanking Interval
@@ -657,7 +731,8 @@ pub mod host {
 
         /// Move the cursor on the screen.
         pub fn move_cursor(row: Row, col: Col) {
-            println!("\u{001B}[{};{}H", row.0 + 1, col.0 + 1);
+            wmove(stdscr(), row.0 as i32, col.0 as i32);
+            refresh();
         }
 
         /// Start playing a tone. It will continue.
@@ -681,9 +756,9 @@ pub mod host {
         /// Show/hide the cursor
         pub fn set_cursor_visible(visible: bool) {
             if visible {
-                print!("\u{001B}[?25h");
+                curs_set(CURSOR_VISIBILITY::CURSOR_VISIBLE);
             } else {
-                print!("\u{001B}[?25l");
+                curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
             }
         }
     }
