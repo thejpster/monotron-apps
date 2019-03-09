@@ -25,32 +25,33 @@
 //!   pages. 0 means no timeout.
 //! * `# <text>` is a heading (double-height text, underlined)
 //! * `## <text>` is a sub-heading (underlined)
-//! * `^F<h><sh><t><bg>` sets the Heading, Sub-heading, Text and Background
-//!   colours for this and subsequent slides.
 
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 
 extern crate monotron_app;
 
-use monotron_app::{Host, Row, Col};
 use core::fmt::Write;
+use monotron_app::{Col, Host, Row};
 
 static MATERIAL: &'static str = include_str!("slides.md");
 
 #[cfg(not(target_os = "none"))]
 pub fn main() {
 	Host::init();
-    let r = monotron_main();
-    Host::deinit();
-    std::process::exit(r);
+	let r = monotron_main();
+	Host::deinit();
+	std::process::exit(r);
 }
 
 struct Context {
 	page: usize,
+	background: char,
 	default: char,
 	heading_top: char,
 	heading_bottom: char,
+	subheading: char,
+	bullet: char,
 	num_pages: usize,
 }
 
@@ -58,27 +59,57 @@ struct Context {
 pub extern "C" fn monotron_main() -> i32 {
 	Host::set_cursor_visible(false);
 	loop {
-		// Clear screen
-		write!(Host, "\x1BZ").unwrap();
 		let mut ctx = Context {
 			page: 1,
-			default: 'w',
+			background: 'W',
+			default: 'k',
 			heading_top: 'g',
-			heading_bottom: 'y',
+			heading_bottom: 'r',
+			subheading: 'g',
+			bullet: 'c',
 			num_pages: count_pages(&MATERIAL),
 		};
+		// Set BG and Clear screen
+		write!(Host, "\x1B{}\x1BZ", ctx.background).unwrap();
+		// Handle end of page marker
+		// Print Footer
+		Host::move_cursor(Row(35), Col(0));
+		write_line(
+			&ctx,
+			"^d                                  Page ^p/^P",
+			false,
+		);
+		Host::move_cursor(Row(0), Col(0));
 		let mut slide_left_default = -1;
+		// Loop through the input
 		for line in MATERIAL.lines() {
-			let line = line.trim();
+			if line.starts_with("^h") {
+				// In-page hold
+				let num = line[2..].parse::<i32>().unwrap();
+				for _ in 0..num * 60 {
+					if Host::kbhit() {
+						match Host::readc() {
+							// Quit program
+							b'q' => return 0,
+							// Next page now
+							b' ' => break,
+							// Ignore anything else
+							_ => {}
+						}
+					} else {
+						// Wait for a frame
+						Host::wfvbi();
+					}
+				}
+				continue;
+			}
 			if line.starts_with("^t") {
+				// Handle page timeouts
 				let num = line[2..].parse::<i32>().unwrap();
 				slide_left_default = num * 60;
 				continue;
-			}
-			if line == "*****" {
-				// Print Footer
-				Host::move_cursor(Row(35), Col(0));
-				write_line(&ctx, "^d                                  Page ^p/^P", false);
+			} else if line.starts_with("***") || line.starts_with("---") || line.starts_with("___")
+			{
 				let mut slide_left = slide_left_default;
 				loop {
 					if Host::kbhit() {
@@ -88,13 +119,18 @@ pub extern "C" fn monotron_main() -> i32 {
 							// Next page now
 							b' ' => slide_left = 0,
 							// Ignore anything else
-							_ => {},
+							_ => {}
 						}
 					}
 					if slide_left == 0 {
 						// Next page
 						ctx.page += 1;
 						// Clear screen
+						for _ in 0..48 {
+							writeln!(Host, "").unwrap();
+							Host::wfvbi();
+							Host::wfvbi();
+						}
 						write!(Host, "\x1BZ").unwrap();
 						break;
 					} else {
@@ -105,7 +141,15 @@ pub extern "C" fn monotron_main() -> i32 {
 						}
 					}
 				}
+				Host::move_cursor(Row(35), Col(0));
+				write_line(
+					&ctx,
+					"^d                                  Page ^p/^P",
+					false,
+				);
+				Host::move_cursor(Row(0), Col(0));
 			} else {
+				// Normal output
 				write_line(&ctx, line, true);
 			}
 		}
@@ -114,17 +158,31 @@ pub extern "C" fn monotron_main() -> i32 {
 
 fn write_line(ctx: &Context, line: &str, newline: bool) {
 	let mut has_escape = false;
-	if line.starts_with("#") {
-		write!(Host, "\x1B^\x1B{}", ctx.heading_top).unwrap();
-		write_line(ctx, &line[1..].trim(), newline);
-		write!(Host, "\x1Bv\x1B{}", ctx.heading_bottom).unwrap();
-		write_line(ctx, &line[1..].trim(), newline);
+	if line.starts_with("##") {
+		write!(Host, "\x1B{}", ctx.subheading).unwrap();
+		let remainder = &line[2..].trim();
+		write_line(ctx, remainder, newline);
 		write!(Host, "\x1B{}", ctx.default).unwrap();
-		let underlines = line[1..].trim().len();
+		let underlines = remainder.len();
 		for _ in 0..underlines {
 			write!(Host, "=").unwrap();
 		}
 		writeln!(Host, "").unwrap();
+	} else if line.starts_with("#") {
+		write!(Host, "\x1B^\x1B{}", ctx.heading_top).unwrap();
+		let remainder = &line[1..].trim();
+		write_line(ctx, remainder, newline);
+		write!(Host, "\x1Bv\x1B{}", ctx.heading_bottom).unwrap();
+		write_line(ctx, remainder, newline);
+		write!(Host, "\x1B{}", ctx.default).unwrap();
+		let underlines = remainder.len();
+		for _ in 0..underlines {
+			write!(Host, "=").unwrap();
+		}
+		writeln!(Host, "").unwrap();
+	} else if line.starts_with("* ") {
+		write!(Host, "  \x1B{}\x07\x1B{} ", ctx.bullet, ctx.default).unwrap();
+		write_line(&ctx, &line[2..], true);
 	} else {
 		for ch in line.chars() {
 			if has_escape {
@@ -149,7 +207,8 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 					'K' => write!(Host, "\x1BK").unwrap(),
 					'W' => write!(Host, "\x1BW").unwrap(),
 					'd' => write!(Host, "\x1B{}", ctx.default).unwrap(),
-					't' => {},
+					'D' => write!(Host, "\x1B{}", ctx.background).unwrap(),
+					't' => {}
 					_ => write!(Host, "X").unwrap(),
 				}
 				has_escape = false;
@@ -168,5 +227,10 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 }
 
 pub fn count_pages(contents: &str) -> usize {
-	contents.lines().filter(|s| s.starts_with("****")).count()
+	contents
+		.lines()
+		.filter(|line| {
+			line.starts_with("***") || line.starts_with("---") || line.starts_with("___")
+		})
+		.count()
 }
