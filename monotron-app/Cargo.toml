@@ -3,13 +3,8 @@ name = "monotron-app"
 version = "0.1.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 
-[profile.release]
-lto = true
-debug = true
-codegen-units = 1
-opt-level = "z"
-
 [features]
 print-panic = []
 
-[dependencies]
+[target.'cfg(not(target_os = "none"))'.dependencies]
+ncurses = "5.99.0"
