@@ -140,6 +140,36 @@ the ROM. Functions include:
 * Setting the foreground/background colour
 
 ***
+# Programming
+
+You can use TinyBASIC or 6502 BASIC directly,
+but for more power, you can run C or Rust
+programs compiled on any Windows/Linux PC.
+
+## Example Code
+
+   #![cfg_attr(target_os = "none", no_std)]
+   #![cfg_attr(target_os = "none", no_main)]
+   extern crate monotron_app;
+
+   use monotron_app::prelude::*;
+   use monotron_app::Host;
+
+   #[cfg(not(target_os = "none"))]
+   pub fn main() {
+       std::process::exit(monotron_main());
+   }
+
+   #[no_mangle]
+   pub extern "C" fn monotron_main() -> i32 {
+      writeln!(Host, "Hello, World!").unwrap();
+      for _ in 0..300 {
+         Host::wfvbi();
+      }
+      0
+   }
+
+***
 # Learn more
 
 ## About Rust:
