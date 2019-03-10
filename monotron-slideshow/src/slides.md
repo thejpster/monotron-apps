@@ -17,12 +17,12 @@ read from a PS/2 keyboard and interface with
 an SD Card.
 ^h4
 
-There's also a custom PCB, which adds lots more
-old-fashioned interfaces!
+There's also a custom PCB, which adds lots
+more old-fashioned interfaces!
 ^h4
 
-I have 32 KiB of RAM, with 24 KiB available for
-loading programs (like this slide show).
+I have 32 KiB of RAM, with 24 KiB available
+for loading programs (like this slide show).
 
 ***
 # Features
@@ -87,13 +87,21 @@ It has:
 ^h2
 * 400x600 effective resolution
 ^h2
-* 8 colours ^rR^gG^bB^c^K^wW^D^cC^mM^yY^kK
+* 8 colours ^RR^GG^BB^C^W^kW^d^CC^MM^YY^K^wK^d
 ^h2
-* CodePage 850 character set x03\x04\x05\x06
+* CodePage 850 (W.Europe) character set
 ^h2
-* 'Teletext' font for block graphics
+* 'Teletext' block graphics mode
 ^h2
 * Support for custom fonts in RAM
+^h2
+* A 384x288 cell-coloured bitmap mode
+^h2
+* ZX Spectrum-style attribute clash ;)
+
+A full-screen bitmap takes up 17 KiB out of
+the 24 KiB spare RAM, so block graphics are
+usually a better idea!
 
 ***
 # Audio Output
@@ -162,9 +170,11 @@ programs compiled on any Windows/Linux PC.
 
    #[no_mangle]
    pub extern "C" fn monotron_main() -> i32 {
-      writeln!(Host, "Hello, World!").unwrap();
-      for _ in 0..300 {
-         Host::wfvbi();
+      for _ in 0..10 {
+         Host::puts("Hello, World!");
+         for _ in 0..60 {
+            Host::wfvbi();
+         }
       }
       0
    }
@@ -173,17 +183,17 @@ programs compiled on any Windows/Linux PC.
 # Learn more
 
 ## About Rust:
-* ^bgithub.com/rust-embedded^d
-* ^brust-lang.org^d
+* ^Cgithub.com/rust-embedded^D
+* ^Crust-lang.org^D
 ^h4
 
 ## About the Author:
 * Twitter: @therealjpster
-* Keybase: ^bkeybase.io/thejpster^d
+* Keybase: ^Ckeybase.io/thejpster^D
 ^h4
 
 ## Get the Source:
-* ^bgithub.com/thejpster/monotron^d
-* ^bgithub.com/thejpster/monotron-apps^d
+* ^Cgithub.com/thejpster/monotron^D
+* ^Cgithub.com/thejpster/monotron-apps^D
 
 ***

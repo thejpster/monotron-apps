@@ -402,11 +402,12 @@ impl core::convert::Into<Frequency> for Note {
 
 #[cfg(target_os = "none")]
 /// Implementation used when building code for the Montron
-pub mod monotron {
+pub mod target {
     use super::*;
 
     #[link_section = ".entry_point"]
     #[no_mangle]
+    #[used]
     /// The pointer Monotron calls to start running this application.
     pub static ENTRY_POINT: fn(*const Table, *mut Context) -> i32 = entry_point;
     /// Pointer to the callback table we're given by the host.
@@ -581,7 +582,7 @@ pub mod monotron {
 
 #[cfg(not(target_os = "none"))]
 /// Implementation used when building code for Linux/Windows
-pub mod host {
+pub mod target {
     use super::*;
     use std::fmt::Write as _fmt_Write;
     use ncurses::*;
@@ -600,22 +601,22 @@ pub mod host {
                             bkgd(COLOR_PAIR(pair));
                             clear();
                         },
-                        'R' => Host::set_bg(0),
-                        'G' => Host::set_bg(1),
-                        'B' => Host::set_bg(2),
-                        'C' => Host::set_bg(3),
-                        'M' => Host::set_bg(4),
-                        'Y' => Host::set_bg(5),
-                        'W' => Host::set_bg(6),
-                        'K' => Host::set_bg(7),
-                        'r' => Host::set_fg(0),
-                        'g' => Host::set_fg(1),
-                        'b' => Host::set_fg(2),
-                        'c' => Host::set_fg(3),
-                        'm' => Host::set_fg(4),
-                        'y' => Host::set_fg(5),
-                        'w' => Host::set_fg(6),
-                        'k' => Host::set_fg(7),
+                        'R' => Host::set_fg(0),
+                        'G' => Host::set_fg(1),
+                        'B' => Host::set_fg(2),
+                        'C' => Host::set_fg(3),
+                        'M' => Host::set_fg(4),
+                        'Y' => Host::set_fg(5),
+                        'W' => Host::set_fg(6),
+                        'K' => Host::set_fg(7),
+                        'r' => Host::set_bg(0),
+                        'g' => Host::set_bg(1),
+                        'b' => Host::set_bg(2),
+                        'c' => Host::set_bg(3),
+                        'm' => Host::set_bg(4),
+                        'y' => Host::set_bg(5),
+                        'w' => Host::set_bg(6),
+                        'k' => Host::set_bg(7),
                         /* double height top */
                         '^' => { },
                         /* double height bottom */

@@ -31,18 +31,11 @@
 
 extern crate monotron_app;
 
-use core::fmt::Write;
+use monotron_app::prelude::*;
 use monotron_app::{Col, Host, Row};
 
 static MATERIAL: &'static str = include_str!("slides.md");
-
-#[cfg(not(target_os = "none"))]
-pub fn main() {
-	Host::init();
-	let r = monotron_main();
-	Host::deinit();
-	std::process::exit(r);
-}
+// static MATERIAL: &'static str = include_str!("presentation.md");
 
 struct Context {
 	page: usize,
@@ -55,31 +48,31 @@ struct Context {
 	num_pages: usize,
 }
 
+#[cfg(not(target_os = "none"))]
+pub fn main() {
+	Host::init();
+	let r = monotron_main();
+	Host::deinit();
+	std::process::exit(r);
+}
+
 #[no_mangle]
 pub extern "C" fn monotron_main() -> i32 {
 	Host::set_cursor_visible(false);
 	loop {
 		let mut ctx = Context {
 			page: 1,
-			background: 'W',
-			default: 'k',
-			heading_top: 'g',
-			heading_bottom: 'r',
-			subheading: 'g',
-			bullet: 'c',
+			background: 'k',
+			default: 'W',
+			heading_top: 'Y',
+			heading_bottom: 'G',
+			subheading: 'G',
+			bullet: 'R',
 			num_pages: count_pages(&MATERIAL),
 		};
 		// Set BG and Clear screen
 		write!(Host, "\x1B{}\x1BZ", ctx.background).unwrap();
-		// Handle end of page marker
-		// Print Footer
-		Host::move_cursor(Row(35), Col(0));
-		write_line(
-			&ctx,
-			"^d                                  Page ^p/^P",
-			false,
-		);
-		Host::move_cursor(Row(0), Col(0));
+		footer(&ctx);
 		let mut slide_left_default = -1;
 		// Loop through the input
 		for line in MATERIAL.lines() {
@@ -141,13 +134,7 @@ pub extern "C" fn monotron_main() -> i32 {
 						}
 					}
 				}
-				Host::move_cursor(Row(35), Col(0));
-				write_line(
-					&ctx,
-					"^d                                  Page ^p/^P",
-					false,
-				);
-				Host::move_cursor(Row(0), Col(0));
+				footer(&ctx);
 			} else {
 				// Normal output
 				write_line(&ctx, line, true);
@@ -162,7 +149,7 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 		write!(Host, "\x1B{}", ctx.subheading).unwrap();
 		let remainder = &line[2..].trim();
 		write_line(ctx, remainder, newline);
-		write!(Host, "\x1B{}", ctx.default).unwrap();
+		write!(Host, "\x1B{} ", ctx.default).unwrap();
 		let underlines = remainder.len();
 		for _ in 0..underlines {
 			write!(Host, "=").unwrap();
@@ -174,16 +161,17 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 		write_line(ctx, remainder, newline);
 		write!(Host, "\x1Bv\x1B{}", ctx.heading_bottom).unwrap();
 		write_line(ctx, remainder, newline);
-		write!(Host, "\x1B{}", ctx.default).unwrap();
+		write!(Host, "\x1B{} ", ctx.default).unwrap();
 		let underlines = remainder.len();
 		for _ in 0..underlines {
 			write!(Host, "=").unwrap();
 		}
 		writeln!(Host, "").unwrap();
 	} else if line.starts_with("* ") {
-		write!(Host, "  \x1B{}\x07\x1B{} ", ctx.bullet, ctx.default).unwrap();
+		write!(Host, "  \x1B{}\x07\x1B{}", ctx.bullet, ctx.default).unwrap();
 		write_line(&ctx, &line[2..], true);
 	} else {
+		write!(Host, " ").unwrap();
 		for ch in line.chars() {
 			if has_escape {
 				match ch {
@@ -206,8 +194,8 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 					'Y' => write!(Host, "\x1BY").unwrap(),
 					'K' => write!(Host, "\x1BK").unwrap(),
 					'W' => write!(Host, "\x1BW").unwrap(),
-					'd' => write!(Host, "\x1B{}", ctx.default).unwrap(),
-					'D' => write!(Host, "\x1B{}", ctx.background).unwrap(),
+					'D' => write!(Host, "\x1B{}", ctx.default).unwrap(),
+					'd' => write!(Host, "\x1B{}", ctx.background).unwrap(),
 					't' => {}
 					_ => write!(Host, "X").unwrap(),
 				}
@@ -226,7 +214,17 @@ fn write_line(ctx: &Context, line: &str, newline: bool) {
 	}
 }
 
-pub fn count_pages(contents: &str) -> usize {
+fn footer(ctx: &Context) {
+	Host::move_cursor(Row(35), Col(0));
+	write_line(
+		&ctx,
+		"^d                                    Page ^p/^P",
+		false,
+	);
+	Host::move_cursor(Row(0), Col(0));
+}
+
+fn count_pages(contents: &str) -> usize {
 	contents
 		.lines()
 		.filter(|line| {
@@ -234,3 +232,5 @@ pub fn count_pages(contents: &str) -> usize {
 		})
 		.count()
 }
+
+// End of file
