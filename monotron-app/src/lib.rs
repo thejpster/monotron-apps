@@ -590,9 +590,10 @@ pub mod target {
     impl std::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> std::fmt::Result {
             use ncurses::*;
-            static mut HAVE_ESCAPE: bool = false;
+            use std::sync::atomic::{AtomicBool, Ordering};
+            static HAVE_ESCAPE: AtomicBool = AtomicBool::new(false);
             for ch in s.chars() {
-                if unsafe { HAVE_ESCAPE } {
+                if HAVE_ESCAPE.load(Ordering::Relaxed) {
                     match ch {
                         'Z' | 'z' => {
                             let mut attr = 0;
@@ -625,13 +626,14 @@ pub mod target {
                         '-' => { },
                         _ => panic!("Unsupported escape sequence {}", ch),
                     }
-                    unsafe { HAVE_ESCAPE = false };
+                    HAVE_ESCAPE.store(false, Ordering::Relaxed);
                 } else {
                     match ch {
+                        '\u{0007}' => { addch('o' as u32); },
                         '\u{001B}' => {
-                            unsafe { HAVE_ESCAPE = true };
+                            HAVE_ESCAPE.store(true, Ordering::Relaxed);
                         },
-                        _ => { addch(ch as u8 as u64); },
+                        _ => { addch(ch as u8 as u32); },
                     }
                 }
             }
