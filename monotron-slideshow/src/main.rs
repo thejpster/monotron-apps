@@ -34,7 +34,7 @@ extern crate monotron_app;
 use monotron_app::prelude::*;
 use monotron_app::{Col, Host, Row};
 
-static MATERIAL: &'static str = include_str!("slides.md");
+static MATERIAL: &'static [u8] = include_bytes!("slides.md");
 // static MATERIAL: &'static str = include_str!("presentation.md");
 
 struct Context<'a> {
@@ -46,7 +46,7 @@ struct Context<'a> {
 	subheading: char,
 	bullet: char,
 	num_pages: usize,
-	material: &'a str,
+	material: &'a [u8],
 }
 
 #[cfg(not(target_os = "none"))]
@@ -69,7 +69,6 @@ enum Keypress {
 #[no_mangle]
 pub extern "C" fn monotron_main() -> i32 {
 	Host::set_cursor_visible(false);
-	let mut bullet_number = 1;
 	let mut ctx = Context {
 		page: 1,
 		background: 'k',
@@ -85,9 +84,11 @@ pub extern "C" fn monotron_main() -> i32 {
 		let keypress = draw_page(&ctx);
 		match keypress {
 			Keypress::Error => {
+				writeln!(Host, "Error finding page {}", ctx.page).unwrap();
 				return 1;
 			}
 			Keypress::Quit => {
+				writeln!(Host, "Quit selected").unwrap();
 				return 0;
 			}
 			Keypress::Down | Keypress::Timeout => {
@@ -101,79 +102,8 @@ pub extern "C" fn monotron_main() -> i32 {
 				}
 			}
 		}
-		writeln!(Host, "Got {:?}", keypress).unwrap();
 	}
 }
-
-// // Set BG and Clear screen
-// write!(Host, "\x1B{}\x1BZ", ctx.background).unwrap();
-// footer(&ctx);
-// let mut slide_left_default = -1;
-// // Loop through the input
-// for line in MATERIAL.lines() {
-// 	if line.starts_with(";") {
-// 		// Ignore line
-// 		continue;
-// 	}
-// 	if line.starts_with("^h") {
-// 		// In-page hold
-// 		let num = line[2..].parse::<i32>().unwrap();
-// 		for _ in 0..num * 60 {
-// 			if Host::kbhit() {
-// 				match Host::readc() {
-// 					// Quit program
-// 					b'q' => return 0,
-// 					// Next page now
-// 					b' ' => break,
-// 					// Ignore anything else
-// 					_ => {}
-// 				}
-// 			} else {
-// 				// Wait for a frame
-// 				Host::wfvbi();
-// 			}
-// 		}
-// 		continue;
-// 	}
-// 	if line.starts_with("^t") {
-// 		// Handle page timeouts
-// 		let num = line[2..].parse::<i32>().unwrap();
-// 		slide_left_default = num * 60;
-// 		continue;
-// 	} else if line.starts_with("***") || line.starts_with("---") || line.starts_with("___") {
-// 		let mut slide_left = slide_left_default;
-// 		bullet_number = 1;
-// 		loop {
-// 			if Host::kbhit() {
-// 				match Host::readc() {
-// 					// Quit program
-// 					b'q' => return 0,
-// 					// Next page now
-// 					b' ' => slide_left = 0,
-// 					// Ignore anything else
-// 					_ => {}
-// 				}
-// 			}
-// 			if slide_left == 0 {
-// 				// Next page
-// 				ctx.page += 1;
-// 				break;
-// 			} else {
-// 				// Wait for a frame
-// 				Host::wfvbi();
-// 				if slide_left > 0 {
-// 					slide_left = slide_left - 1;
-// 				}
-// 			}
-// 		}
-// 		writeln!(Host, "\u{001b}Z").unwrap();
-// 		footer(&ctx);
-// 	} else {
-// 		// Normal output
-// 		write_line(&ctx, line, true, &mut bullet_number);
-// 	}
-// }
-
 
 fn draw_page(ctx: &Context) -> Keypress {
 	// Skip through material to find page
@@ -186,13 +116,13 @@ fn draw_page(ctx: &Context) -> Keypress {
 	let mut slide_left = slide_left_default;
 	let mut bullet_number = 1;
 	writeln!(Host, "\u{001B}W\u{001B}k\u{001B}Z").unwrap();
-	for (idx, line) in page_start.lines().enumerate() {
+	for (idx, line) in page_start.split(|c| *c == b'\n').enumerate() {
 		if is_break(line) {
 			if idx != 0 {
 				break;
 			}
 		}
-		else if line.starts_with(";") {
+		else if line.starts_with(b";") {
 			// Skip comments
 		}
 		else {
@@ -226,42 +156,43 @@ fn draw_page(ctx: &Context) -> Keypress {
 	}
 }
 
-fn find_page<'a>(ctx: &'a Context) -> Option<&'a str> {
+fn find_page<'a>(ctx: &'a Context) -> Option<&'a [u8]> {
 	let mut pages = 1;
-	let mut current = ctx.material;
-	while pages < ctx.page {
-		loop {
-			match current.find("\n") {
-				Some(s) => {
-					current = &current[s+1..];
-					if is_break(current) {
-						pages += 1;
-						break;
-					}
-				}
-				None => {
-					return None;
+	let mut result_index = None;
+	if ctx.page == 1 {
+		// Special case the first page
+		return Some(&ctx.material);
+	}
+	// Don't use .split() here as we want a pointer
+	// to the whole page, not just the next line.
+	for (idx, ch) in ctx.material.iter().enumerate() {
+		if *ch == b'\n' {
+			if is_break(&ctx.material[idx+1..]) {
+				pages += 1;
+				if pages == ctx.page {
+					result_index = Some(idx);
+					break;
 				}
 			}
 		}
 	}
-	Some(current)
+	if let Some(idx) = result_index {
+		Some(&ctx.material[idx+1..])
+	} else {
+		None
+	}
 }
 
-fn write_line(ctx: &Context, line: &str, newline: bool, bullet_number: &mut u8) {
-	if line.starts_with("##") {
-		write!(Host, "   \x1B{}", ctx.subheading).unwrap();
-		let remainder = &line[2..].trim();
+fn write_line(ctx: &Context, line: &[u8], newline: bool, bullet_number: &mut u8) {
+	if line.starts_with(b"##") {
+		write!(Host, "   \x1B^\x1B{}", ctx.subheading).unwrap();
+		let remainder = &line[2..];
 		write_plain_line(ctx, remainder, newline);
-		write!(Host, "   \x1B{} ", ctx.default).unwrap();
-		let underlines = remainder.len();
-		for _ in 0..underlines {
-			write!(Host, "=").unwrap();
-		}
-		writeln!(Host, "").unwrap();
-	} else if line.starts_with("#") {
+		write!(Host, "   \x1Bv\x1B{}", ctx.subheading).unwrap();
+		write_plain_line(ctx, remainder, newline);
+	} else if line.starts_with(b"#") {
 		write!(Host, "   \x1B^\x1B{}", ctx.heading_top).unwrap();
-		let remainder = &line[1..].trim();
+		let remainder = &line[1..];
 		write_plain_line(ctx, remainder, newline);
 		write!(Host, "   \x1Bv\x1B{}", ctx.heading_bottom).unwrap();
 		write_plain_line(ctx, remainder, newline);
@@ -271,63 +202,66 @@ fn write_line(ctx: &Context, line: &str, newline: bool, bullet_number: &mut u8) 
 			write!(Host, "=").unwrap();
 		}
 		writeln!(Host, "").unwrap();
-	} else if line.starts_with("* ") {
-		write!(Host, "     \x1B{}\x07\x1B{}", ctx.bullet, ctx.default).unwrap();
-		write_plain_line(ctx, &line[2..], true);
-		writeln!(Host, "").unwrap();
-	} else if line.starts_with("1. ") {
-		write!(Host, "     \x1B{}{}.\x1B{}", ctx.bullet, bullet_number, ctx.default).unwrap();
+	} else if line.starts_with(b"* ") {
+		let remainder = &line[2..];
+		write!(Host, "     \x1B^\x1B{}\x07\x1B{}", ctx.bullet, ctx.default).unwrap();
+		write_plain_line(ctx, remainder, true);
+		write!(Host, "     \x1Bv\x1B{}\x07\x1B{}", ctx.bullet, ctx.default).unwrap();
+		write_plain_line(ctx, remainder, true);
+	} else if line.starts_with(b"1. ") {
 		*bullet_number += 1;
-		write_plain_line(ctx, &line[2..], true);
-		writeln!(Host, "").unwrap();
+		let remainder = &line[2..];
+		write!(Host, "     \x1B^\x1B{}{}.\x1B{}", ctx.bullet, bullet_number, ctx.default).unwrap();
+		write_plain_line(ctx, remainder, true);
+		write!(Host, "     \x1Bv\x1B{}{}.\x1B{}", ctx.bullet, bullet_number, ctx.default).unwrap();
+		write_plain_line(ctx, remainder, true);
 	} else {
-		write!(Host, "   ").unwrap();
-		write_plain_line(ctx, line, newline);
+		write_plain_line(ctx, line, true);
 	}
 }
 
-fn write_plain_line(ctx: &Context, line: &str, newline: bool)
+fn write_plain_line(ctx: &Context, line: &[u8], newline: bool)
 {
 	let mut has_escape = false;
 	write!(Host, " ").unwrap();
-	for ch in line.chars() {
+	for &ch in line {
 		if has_escape {
 			match ch {
-				'^' => write!(Host, "^").unwrap(),
-				'p' => write!(Host, "{}", ctx.page).unwrap(),
-				'P' => write!(Host, "{}", ctx.num_pages).unwrap(),
-				'r' => write!(Host, "\x1Br").unwrap(),
-				'g' => write!(Host, "\x1Bg").unwrap(),
-				'b' => write!(Host, "\x1Bb").unwrap(),
-				'c' => write!(Host, "\x1Bc").unwrap(),
-				'm' => write!(Host, "\x1Bm").unwrap(),
-				'y' => write!(Host, "\x1By").unwrap(),
-				'k' => write!(Host, "\x1Bk").unwrap(),
-				'w' => write!(Host, "\x1Bw").unwrap(),
-				'R' => write!(Host, "\x1BR").unwrap(),
-				'G' => write!(Host, "\x1BG").unwrap(),
-				'B' => write!(Host, "\x1BB").unwrap(),
-				'C' => write!(Host, "\x1BC").unwrap(),
-				'M' => write!(Host, "\x1BM").unwrap(),
-				'Y' => write!(Host, "\x1BY").unwrap(),
-				'K' => write!(Host, "\x1BK").unwrap(),
-				'W' => write!(Host, "\x1BW").unwrap(),
-				'D' => write!(Host, "\x1B{}", ctx.default).unwrap(),
-				'd' => write!(Host, "\x1B{}", ctx.background).unwrap(),
-				't' => {}
+				b'^' => Host::puts(b"^"),
+				b'p' => write!(Host, "{}", ctx.page).unwrap(),
+				b'P' => write!(Host, "{}", ctx.num_pages).unwrap(),
+				b'r' => Host::puts(b"\x1Br"),
+				b'g' => Host::puts(b"\x1Bg"),
+				b'b' => Host::puts(b"\x1Bb"),
+				b'c' => Host::puts(b"\x1Bc"),
+				b'm' => Host::puts(b"\x1Bm"),
+				b'y' => Host::puts(b"\x1By"),
+				b'k' => Host::puts(b"\x1Bk"),
+				b'w' => Host::puts(b"\x1Bw"),
+				b'R' => Host::puts(b"\x1BR"),
+				b'G' => Host::puts(b"\x1BG"),
+				b'B' => Host::puts(b"\x1BB"),
+				b'C' => Host::puts(b"\x1BC"),
+				b'M' => Host::puts(b"\x1BM"),
+				b'Y' => Host::puts(b"\x1BY"),
+				b'K' => Host::puts(b"\x1BK"),
+				b'W' => Host::puts(b"\x1BW"),
+				b'D' => write!(Host, "\x1B{}", ctx.default).unwrap(),
+				b'd' => write!(Host, "\x1B{}", ctx.background).unwrap(),
+				b't' => {}
 				_ => write!(Host, "X").unwrap(),
 			}
 			has_escape = false;
 		} else {
-			if ch == '^' {
+			if ch == b'^' {
 				has_escape = true;
 			} else {
-				write!(Host, "{}", ch).unwrap();
+				Host::putchar(ch);
 			}
 		}
 	}
 	if newline {
-		write!(Host, "\n").unwrap();
+		Host::putchar(b'\n');
 	}
 }
 
@@ -335,21 +269,21 @@ fn footer(ctx: &Context) {
 	Host::move_cursor(Row(35), Col(0));
 	write_plain_line(
 		ctx,
-		"^d                                    Page ^p/^P",
+		b"^d                                    Page ^p/^P",
 		false
 	);
 	Host::move_cursor(Row(0), Col(0));
 }
 
-fn count_pages(contents: &str) -> usize {
+fn count_pages(contents: &[u8]) -> usize {
 	contents
-		.lines()
+		.split(|c| *c == b'\n')
 		.filter(|line| is_break(line))
 		.count()
 }
 
-fn is_break(line: &str) -> bool {
-	line.starts_with("***") || line.starts_with("---") || line.starts_with("___")
+fn is_break(line: &[u8]) -> bool {
+	line.starts_with(b"***") || line.starts_with(b"---") || line.starts_with(b"___")
 }
 
 // End of file
