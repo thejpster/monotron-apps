@@ -5,7 +5,8 @@ authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 edition = "2018"
 
 [profile.release]
-opt-level = "s"
+panic = "abort"
+opt-level = "z"
 lto = true
 
 [dependencies]
