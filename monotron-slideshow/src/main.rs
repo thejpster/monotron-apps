@@ -50,6 +50,7 @@ struct Context<'a> {
     bullet: u8,
     num_pages: u8,
     material: &'a [u8],
+    centre: core::cell::RefCell<bool>
 }
 
 #[cfg(not(target_os = "none"))]
@@ -85,6 +86,7 @@ pub extern "C" fn monotron_main() -> i32 {
         bullet: b'Y',
         material: &MATERIAL,
         num_pages: count_pages(&MATERIAL),
+        centre: core::cell::RefCell::new(false)
     };
     loop {
         let keypress = draw_page(&ctx);
@@ -94,7 +96,8 @@ pub extern "C" fn monotron_main() -> i32 {
                 return 1;
             }
             Keypress::Quit => {
-                Host::puts(b"\x1BZThank's for watching!\n");
+                Host::puts(b"\x1BW\x1Bk\x1BZ");
+                Host::puts(b"Thanks for watching!\n");
                 return 0;
             }
             Keypress::Nothing | Keypress::Down | Keypress::Timeout => {
@@ -118,10 +121,10 @@ fn draw_page(ctx: &Context) -> Keypress {
         Some(p) => p,
         None => return Keypress::Error,
     };
-
     let mut bullet_number = b'1';
     Host::puts(b"\x1BW\x1Bk\x1BZ");
-    footer(ctx);
+    footer(&ctx);
+    *ctx.centre.borrow_mut() = false;
     for (idx, line) in page_start.split(|c| *c == b'\n').enumerate() {
         if is_break(line) {
             if idx != 0 {
@@ -284,7 +287,35 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
     let mut has_escape = false;
     let mut is_rle = 0;
     let mut rle_count = 0;
-    Host::putchar(b' ');
+    let padding = if *ctx.centre.borrow() == true {
+        let mut length: i32 = 0;
+        for &ch in line {
+            if has_escape {
+                if ch == b'n' {
+                    // special RLE
+                    is_rle = 1;
+                }
+                has_escape = false;
+            } else if is_rle == 1 {
+                length += ch as i32 - 33;
+                is_rle = 0;
+                has_escape = false;
+            } else {
+                if ch == b'^' {
+                    has_escape = true;
+                } else {
+                    length += 1;
+                }
+            }
+        }
+        let width = 48;
+        (width - length) / 2
+    } else {
+        1
+    };
+    for _ in 0..padding {
+        Host::putchar(b' ');
+    }
     for &ch in line {
         if is_rle == 1 {
             rle_count = ch - 32;
@@ -313,7 +344,7 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
                 b'W' => Host::puts(b"\x1BW"),
                 b'D' => { Host::putchar(0x1B); Host::putchar(ctx.default); }
                 b'd' => { Host::putchar(0x1B); Host::putchar(ctx.background); }
-                b't' => {}
+                b'e' => { *ctx.centre.borrow_mut() = true; }
                 _ => Host::putchar(b'X'),
             }
             has_escape = false;
