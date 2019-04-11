@@ -699,7 +699,7 @@ pub mod target {
                 let unicode_scalar = ch as char;
                 write!(Host, "{}", unicode_scalar).unwrap();
             } else {
-                write!(Host, "?").unwrap();
+                write!(Host, "#").unwrap();
             }
         }
 
