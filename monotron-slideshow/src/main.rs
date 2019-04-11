@@ -123,8 +123,8 @@ fn draw_page(ctx: &Context) -> Keypress {
     };
     let mut bullet_number = b'1';
     Host::puts(b"\x1BW\x1Bk\x1BZ");
-    footer(&ctx);
     *ctx.centre.borrow_mut() = false;
+    footer(&ctx);
     for (idx, line) in page_start.split(|c| *c == b'\n').enumerate() {
         if is_break(line) {
             if idx != 0 {
