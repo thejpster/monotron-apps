@@ -371,7 +371,7 @@ fn footer(ctx: &Context) {
     Host::move_cursor(Row(35), Col(0));
     write_plain_line(
         ctx,
-        b"^d                                    Page ^p/^P",
+        b"^d[@therealjpster] / ACCU 2019        Page ^p/^P",
         false,
     );
     Host::move_cursor(Row(0), Col(0));
