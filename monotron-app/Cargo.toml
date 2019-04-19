@@ -7,5 +7,6 @@ authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 print-panic = []
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
-ncurses = { version = "5.99.0", features = ["wide"] }
-libc = { version = "0.2", default-features = false }
+sdl2 = "*"
+vga-framebuffer = { git = "https://github.com/thejpster/vga-framebuffer-rs", branch="pixel_pull" }
+lazy_static = "*"

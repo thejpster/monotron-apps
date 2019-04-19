@@ -40,7 +40,16 @@
 use std as core;
 
 #[cfg(not(target_os = "none"))]
-extern crate ncurses;
+extern crate sdl2;
+
+#[cfg(not(target_os = "none"))]
+extern crate vga_framebuffer;
+
+#[cfg(not(target_os = "none"))]
+extern crate lazy_static;
+
+#[cfg(not(target_os = "none"))]
+mod sdl_window;
 
 #[repr(C)]
 /// The callbacks supplied by the Monotron OS.
@@ -578,7 +587,12 @@ pub mod target {
 /// Implementation used when building code for Linux/Windows
 pub mod target {
     use super::*;
-    use ncurses::*;
+    use lazy_static::lazy_static;
+    use std::sync::Mutex;
+
+    lazy_static! {
+        static ref VIDEO_CONTEXT: Mutex<Option<sdl_window::Context<'static>>> = Mutex::new(None);
+    }
 
     impl std::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> std::fmt::Result {
@@ -600,132 +614,39 @@ pub mod target {
 
         /// Call once at start-up to configure terminal
         pub fn init() {
-            unsafe {
-                libc::setlocale(libc::LC_ALL, [0].as_ptr());
-            }
-            initscr();
-            cbreak();
-            noecho();
-            nodelay(stdscr(), true);
-            scrollok(stdscr(), true);
-            // Set up 64 colour combinations
-            // The colours are RGBCMYKW in that order
-            // The index is `(fg + (bg * 8)) + 1`
-            start_color();
-            let colors = [
-                COLOR_RED,
-                COLOR_GREEN,
-                COLOR_BLUE,
-                COLOR_CYAN,
-                COLOR_MAGENTA,
-                COLOR_YELLOW,
-                COLOR_WHITE,
-                COLOR_BLACK,
-            ];
-            for (fgi, fg) in colors.iter().enumerate() {
-                for (bgi, bg) in colors.iter().enumerate() {
-                    let pair = (fgi + (bgi * 8)) + 1;
-                    init_pair(pair as i16, *fg, *bg);
-                }
-            }
-            // White (6) on Black (7)
-            attron(COLOR_PAIR(6 + (7 * 8) + 1));
-            resizeterm(36, 48);
-        }
-
-        fn set_fg(fgi: i16) {
-            let mut attr = 0;
-            let mut pair = 0;
-            attr_get(&mut attr, &mut pair);
-            let bgi = (pair - 1) / 8;
-            let pair = ((bgi * 8) + fgi) + 1;
-            attron(COLOR_PAIR(pair));
-        }
-
-        fn set_bg(bgi: i16) {
-            let mut attr = 0;
-            let mut pair = 0;
-            attr_get(&mut attr, &mut pair);
-            let fgi = (pair - 1) & 7;
-            let pair = ((bgi * 8) + fgi) + 1;
-            attron(COLOR_PAIR(pair));
+            // Create SDL2 canvas and window
+            // Create framebuffer to render onto canvas
+            let ctx = sdl_window::Context::new();
+            *VIDEO_CONTEXT.lock().unwrap() = Some(ctx);
         }
 
         /// Disable ncurses
         pub fn deinit() {
-            endwin();
+            // destroy SDL2 window
         }
 
         /// Send a single 8-bit character to the screen.
         pub fn putchar(ch: u8) {
-            use ncurses::*;
-            use std::sync::atomic::{AtomicBool, Ordering};
-            static HAVE_ESCAPE: AtomicBool = AtomicBool::new(false);
-            if HAVE_ESCAPE.load(Ordering::Relaxed) {
-                match ch {
-                    b'Z' | b'z' => {
-                        let mut attr = 0;
-                        let mut pair = 0;
-                        attr_get(&mut attr, &mut pair);
-                        bkgd(COLOR_PAIR(pair));
-                        clear();
-                    }
-                    b'R' => Host::set_fg(0),
-                    b'G' => Host::set_fg(1),
-                    b'B' => Host::set_fg(2),
-                    b'C' => Host::set_fg(3),
-                    b'M' => Host::set_fg(4),
-                    b'Y' => Host::set_fg(5),
-                    b'W' => Host::set_fg(6),
-                    b'K' => Host::set_fg(7),
-                    b'r' => Host::set_bg(0),
-                    b'g' => Host::set_bg(1),
-                    b'b' => Host::set_bg(2),
-                    b'c' => Host::set_bg(3),
-                    b'm' => Host::set_bg(4),
-                    b'y' => Host::set_bg(5),
-                    b'w' => Host::set_bg(6),
-                    b'k' => Host::set_bg(7),
-                    /* double height top */
-                    b'^' => {}
-                    /* double height bottom */
-                    b'v' => {}
-                    /* normal height bottom */
-                    b'-' => {}
-                    _ => panic!("Unsupported escape sequence {}", ch),
-                }
-                HAVE_ESCAPE.store(false, Ordering::Relaxed);
-            } else {
-                match ch {
-                    b'\x1B' => {
-                        HAVE_ESCAPE.store(true, Ordering::Relaxed);
-                    }
-                    _ => {
-                        let unicode_ch = cp850_to_unicode(ch);
-                        let mut buffer = [0u8; 4];
-                        let result = unicode_ch.encode_utf8(&mut buffer);
-                        for b in result.bytes() {
-                            addch(b.into());
-                        }
-                    }
-                }
+            use vga_framebuffer::AsciiConsole;
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.fb.write_character(ch).unwrap();
             }
-            refresh();
         }
 
         /// Send a single 8-bit character to the screen.
         pub fn puts(str8bit: &[u8]) {
-            for &ch in str8bit {
-                Host::putchar(ch);
+            use vga_framebuffer::AsciiConsole;
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                for &ch in str8bit {
+                    ctx.fb.write_character(ch).unwrap();
+                }
             }
         }
 
         /// Return true if there is a keypress waiting (i.e. `readc` won't block).
         pub fn kbhit() -> bool {
-            let ch = getch();
-            if ch != ERR {
-                ungetch(ch);
-                true
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.keypresses.len() != 0
             } else {
                 false
             }
@@ -733,22 +654,39 @@ pub mod target {
 
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
-            let ch = getch();
-            // This is a crude conversion from local locale (UTF-8?) to Code
-            // Page 850. It will produce garbage for anything that's not a
-            // basic ASCII character
-            ch as u8
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.keypresses.pop_front().unwrap()
+            } else {
+                panic!("Failed to get lock");
+            }
         }
 
         /// Wait For Vertical Blanking Interval
         pub fn wfvbi() {
+            // redraw the screen here, as apps should call wfvbi often yes,
+            // it's a kludge. It's that or we try and put the framebuffer in
+            // another thread, but it's not thread-safe.
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.draw();
+                ctx.pump();
+            }
             ::std::thread::sleep(::std::time::Duration::from_micros(1_000_000 / 60));
         }
 
         /// Move the cursor on the screen.
         pub fn move_cursor(row: Row, col: Col) {
-            wmove(stdscr(), row.0 as i32, col.0 as i32);
-            refresh();
+            use vga_framebuffer::BaseConsole;
+            if col.0 as usize <= vga_framebuffer::TEXT_MAX_COL {
+                if row.0 as usize <= vga_framebuffer::TEXT_MAX_ROW {
+                    if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                        let p = vga_framebuffer::Position::new(
+                            vga_framebuffer::Row(row.0),
+                            vga_framebuffer::Col(col.0),
+                        );
+                        ctx.fb.set_pos(p).unwrap();
+                    }
+                }
+            }
         }
 
         /// Start playing a tone. It will continue.
@@ -770,177 +708,9 @@ pub mod target {
         }
 
         /// Show/hide the cursor
-        pub fn set_cursor_visible(visible: bool) {
-            if visible {
-                curs_set(CURSOR_VISIBILITY::CURSOR_VISIBLE);
-            } else {
-                curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
-            }
+        pub fn set_cursor_visible(_visible: bool) {
+            // ?
         }
-    }
-
-}
-
-fn cp850_to_unicode(ascii_ch: u8) -> char {
-    match ascii_ch {
-        0 => '\u{0000}',
-        1 => '\u{263A}',
-        2 => '\u{263B}',
-        3 => '\u{2665}',
-        4 => '\u{2666}',
-        5 => '\u{2663}',
-        6 => '\u{2660}',
-        7 => '\u{2022}',
-        8 => '\u{25D8}',
-        11 => '\u{2642}',
-        12 => '\u{2640}',
-        14 => '\u{266B}',
-        15 => '\u{263C}',
-        16 => '\u{25BA}',
-        17 => '\u{25C4}',
-        18 => '\u{2195}',
-        19 => '\u{203C}',
-        20 => '\u{00B6}',
-        21 => '\u{00A7}',
-        22 => '\u{25AC}',
-        23 => '\u{21A8}',
-        24 => '\u{2191}',
-        25 => '\u{2193}',
-        26 => '\u{2192}',
-        27 => '\u{2190}',
-        28 => '\u{221F}',
-        29 => '\u{2194}',
-        30 => '\u{25B2}',
-        31 => '\u{25BC}',
-        b'\t' | b'\r' | b'\n' | 32...127 => ascii_ch.into(),
-        128 => '\u{00C7}',
-        129 => '\u{00FC}',
-        130 => '\u{00E9}',
-        131 => '\u{00E2}',
-        132 => '\u{00E4}',
-        133 => '\u{00E0}',
-        134 => '\u{00E5}',
-        135 => '\u{00E7}',
-        136 => '\u{00EA}',
-        137 => '\u{00EB}',
-        138 => '\u{00E8}',
-        139 => '\u{00EF}',
-        140 => '\u{00EE}',
-        141 => '\u{00EC}',
-        142 => '\u{00C4}',
-        143 => '\u{00C5}',
-        144 => '\u{00C9}',
-        145 => '\u{00E6}',
-        146 => '\u{00C6}',
-        147 => '\u{00F4}',
-        148 => '\u{00F6}',
-        149 => '\u{00F2}',
-        150 => '\u{00FB}',
-        151 => '\u{00F9}',
-        152 => '\u{00FF}',
-        153 => '\u{00D6}',
-        154 => '\u{00DC}',
-        155 => '\u{00F8}',
-        156 => '\u{00A3}',
-        157 => '\u{00D8}',
-        158 => '\u{00D7}',
-        159 => '\u{0192}',
-        160 => '\u{00E1}',
-        161 => '\u{00ED}',
-        162 => '\u{00F3}',
-        163 => '\u{00FA}',
-        164 => '\u{00F1}',
-        165 => '\u{00D1}',
-        166 => '\u{00AA}',
-        167 => '\u{00BA}',
-        168 => '\u{00BF}',
-        169 => '\u{00AE}',
-        170 => '\u{00AC}',
-        171 => '\u{00BD}',
-        172 => '\u{00BC}',
-        173 => '\u{00A1}',
-        174 => '\u{00AB}',
-        175 => '\u{00BB}',
-        176 => '\u{2591}',
-        177 => '\u{2592}',
-        178 => '\u{2593}',
-        179 => '\u{2502}',
-        180 => '\u{2524}',
-        181 => '\u{00C1}',
-        182 => '\u{00C2}',
-        183 => '\u{00C0}',
-        184 => '\u{00A9}',
-        185 => '\u{2563}',
-        186 => '\u{2551}',
-        187 => '\u{2557}',
-        188 => '\u{255D}',
-        189 => '\u{00A2}',
-        190 => '\u{00A5}',
-        191 => '\u{2510}',
-        192 => '\u{2514}',
-        193 => '\u{2534}',
-        194 => '\u{252C}',
-        195 => '\u{251C}',
-        196 => '\u{2500}',
-        197 => '\u{253C}',
-        198 => '\u{00E3}',
-        199 => '\u{00C3}',
-        200 => '\u{255A}',
-        201 => '\u{2554}',
-        202 => '\u{2569}',
-        203 => '\u{2566}',
-        204 => '\u{2560}',
-        205 => '\u{2550}',
-        206 => '\u{256C}',
-        207 => '\u{00A4}',
-        208 => '\u{00F0}',
-        209 => '\u{00D0}',
-        210 => '\u{00CA}',
-        211 => '\u{00CB}',
-        212 => '\u{00C8}',
-        213 => '\u{0131}',
-        214 => '\u{00CD}',
-        215 => '\u{00CE}',
-        216 => '\u{00CF}',
-        217 => '\u{2518}',
-        218 => '\u{250C}',
-        219 => '\u{2588}',
-        220 => '\u{2584}',
-        221 => '\u{00A6}',
-        222 => '\u{00CC}',
-        223 => '\u{2580}',
-        224 => '\u{00D3}',
-        225 => '\u{00DF}',
-        226 => '\u{00D4}',
-        227 => '\u{00D2}',
-        228 => '\u{00F5}',
-        229 => '\u{00D5}',
-        230 => '\u{00B5}',
-        231 => '\u{00FE}',
-        232 => '\u{00DE}',
-        233 => '\u{00DA}',
-        234 => '\u{00DB}',
-        235 => '\u{00D9}',
-        236 => '\u{00FD}',
-        237 => '\u{00DD}',
-        238 => '\u{00AF}',
-        239 => '\u{00B4}',
-        240 => '\u{00AD}',
-        241 => '\u{00B1}',
-        242 => '\u{2017}',
-        243 => '\u{00BE}',
-        244 => '\u{00B6}',
-        245 => '\u{00A7}',
-        246 => '\u{00F7}',
-        247 => '\u{00B8}',
-        248 => '\u{00B0}',
-        249 => '\u{00A8}',
-        250 => '\u{00B7}',
-        251 => '\u{00B9}',
-        252 => '\u{00B3}',
-        253 => '\u{00B2}',
-        254 => '\u{25A0}',
-        255 => '\u{00A0}',
     }
 }
 
