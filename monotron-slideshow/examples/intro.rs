@@ -5,8 +5,8 @@
 #![cfg_attr(target_os = "none", no_std)]
 #![cfg_attr(target_os = "none", no_main)]
 
-extern crate monotron_slideshow;
 extern crate monotron_app;
+extern crate monotron_slideshow;
 
 static MATERIAL: &'static [u8] = include_bytes!("../bin/intro.md");
 

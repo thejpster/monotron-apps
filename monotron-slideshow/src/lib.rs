@@ -47,7 +47,7 @@ pub struct Context<'a> {
     num_pages: u8,
     material: &'a [u8],
     footer: &'a [u8],
-    centre: core::cell::RefCell<bool>
+    centre: core::cell::RefCell<bool>,
 }
 
 #[derive(Debug)]
@@ -75,7 +75,7 @@ pub fn main(material: &[u8], footer: &[u8]) -> i32 {
         material: material,
         num_pages: count_pages(material),
         footer,
-        centre: core::cell::RefCell::new(false)
+        centre: core::cell::RefCell::new(false),
     };
     loop {
         let keypress = draw_page(&ctx);
@@ -331,9 +331,17 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
                 b'Y' => Host::puts(b"\x1BY"),
                 b'K' => Host::puts(b"\x1BK"),
                 b'W' => Host::puts(b"\x1BW"),
-                b'D' => { Host::putchar(0x1B); Host::putchar(ctx.default); }
-                b'd' => { Host::putchar(0x1B); Host::putchar(ctx.background); }
-                b'e' => { *ctx.centre.borrow_mut() = true; }
+                b'D' => {
+                    Host::putchar(0x1B);
+                    Host::putchar(ctx.default);
+                }
+                b'd' => {
+                    Host::putchar(0x1B);
+                    Host::putchar(ctx.background);
+                }
+                b'e' => {
+                    *ctx.centre.borrow_mut() = true;
+                }
                 _ => Host::putchar(b'X'),
             }
             has_escape = false;
@@ -352,23 +360,15 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
         }
     }
     if newline {
-	    Host::putchar(b'\n');
+        Host::putchar(b'\n');
     }
 }
 
 fn footer(ctx: &Context) {
     Host::move_cursor(Row(35), Col(0));
-    write_plain_line(
-        ctx,
-        ctx.footer,
-        false,
-    );
+    write_plain_line(ctx, ctx.footer, false);
     Host::move_cursor(Row(35), Col(36));
-    write_plain_line(
-        ctx,
-        b"Page ^p/^P",
-        false,
-    );
+    write_plain_line(ctx, b"Page ^p/^P", false);
     Host::move_cursor(Row(0), Col(0));
 }
 
@@ -384,18 +384,18 @@ fn is_break(line: &[u8]) -> bool {
 }
 
 fn print_num(number: u8) {
-	let mut number = number;
-	if number >= 100 {
-		let hundreds = number / 100;
-		Host::putchar(b'0' + hundreds);
-		number = number - (hundreds * 100);
-	}
-	if number >= 10 {
-		let tens = number / 10;
-		Host::putchar(b'0' + tens);
-		number = number - (tens * 10);
-	}
-	Host::putchar(b'0' + number);
+    let mut number = number;
+    if number >= 100 {
+        let hundreds = number / 100;
+        Host::putchar(b'0' + hundreds);
+        number = number - (hundreds * 100);
+    }
+    if number >= 10 {
+        let tens = number / 10;
+        Host::putchar(b'0' + tens);
+        number = number - (tens * 10);
+    }
+    Host::putchar(b'0' + number);
 }
 
 // End of file

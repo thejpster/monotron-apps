@@ -612,14 +612,23 @@ pub mod target {
             // The colours are RGBCMYKW in that order
             // The index is [(fg * 8) + bg]
             start_color();
-            let colors = [ COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_CYAN, COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE, COLOR_BLACK ];
+            let colors = [
+                COLOR_RED,
+                COLOR_GREEN,
+                COLOR_BLUE,
+                COLOR_CYAN,
+                COLOR_MAGENTA,
+                COLOR_YELLOW,
+                COLOR_WHITE,
+                COLOR_BLACK,
+            ];
             for (fgi, fg) in colors.iter().enumerate() {
                 for (bgi, bg) in colors.iter().enumerate() {
                     let pair = ((bgi * 8) + fgi) + 1;
                     init_pair(pair as i16, *fg, *bg);
                 }
             }
-            attron(COLOR_PAIR((7*8) + 6 + 1));
+            attron(COLOR_PAIR((7 * 8) + 6 + 1));
             resizeterm(36, 48);
         }
 
@@ -627,7 +636,7 @@ pub mod target {
             let mut attr = 0;
             let mut pair = 0;
             attr_get(&mut attr, &mut pair);
-            let bgi = (pair - 1) / 8 ;
+            let bgi = (pair - 1) / 8;
             let pair = ((bgi * 8) + fgi) + 1;
             attron(COLOR_PAIR(pair));
         }
@@ -659,7 +668,7 @@ pub mod target {
                         attr_get(&mut attr, &mut pair);
                         bkgd(COLOR_PAIR(pair));
                         clear();
-                    },
+                    }
                     b'R' => Host::set_fg(0),
                     b'G' => Host::set_fg(1),
                     b'B' => Host::set_fg(2),
@@ -677,11 +686,11 @@ pub mod target {
                     b'w' => Host::set_bg(6),
                     b'k' => Host::set_bg(7),
                     /* double height top */
-                    b'^' => { },
+                    b'^' => {}
                     /* double height bottom */
-                    b'v' => { },
+                    b'v' => {}
                     /* normal height bottom */
-                    b'-' => { },
+                    b'-' => {}
                     _ => panic!("Unsupported escape sequence {}", ch),
                 }
                 HAVE_ESCAPE.store(false, Ordering::Relaxed);
