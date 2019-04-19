@@ -8,9 +8,9 @@
 extern crate monotron_slideshow;
 extern crate monotron_app;
 
-static MATERIAL: &'static [u8] = include_bytes!("../bin/intro.md");
+static MATERIAL: &'static [u8] = include_bytes!("../bin/cch2019.md");
 
-static FOOTER: &'static [u8] = b"[@therealjpster]";
+static FOOTER: &'static [u8] = b"[@therealjpster], CCH 2019";
 
 #[cfg(not(target_os = "none"))]
 pub fn main() {

@@ -47,6 +47,7 @@ pub struct Context<'a> {
     bullet: u8,
     num_pages: u8,
     material: &'a [u8],
+    footer: &'a [u8],
     centre: core::cell::RefCell<bool>
 }
 
@@ -60,7 +61,7 @@ pub enum Keypress {
     Nothing,
 }
 
-pub fn main(material: &[u8]) -> i32 {
+pub fn main(material: &[u8], footer: &[u8]) -> i32 {
     Host::set_cursor_visible(false);
     let mut ctx = Context {
         page: 1,
@@ -74,6 +75,7 @@ pub fn main(material: &[u8]) -> i32 {
         bullet: b'Y',
         material: material,
         num_pages: count_pages(material),
+        footer,
         centre: core::cell::RefCell::new(false)
     };
     loop {
@@ -359,7 +361,13 @@ fn footer(ctx: &Context) {
     Host::move_cursor(Row(35), Col(0));
     write_plain_line(
         ctx,
-        b"^d[@therealjpster]                    Page ^p/^P",
+        ctx.footer,
+        false,
+    );
+    Host::move_cursor(Row(35), Col(36));
+    write_plain_line(
+        ctx,
+        b"Page ^p/^P",
         false,
     );
     Host::move_cursor(Row(0), Col(0));
