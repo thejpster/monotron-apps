@@ -1,6 +1,6 @@
 .PHONY: all rebuild clean
 
-APPLICATIONS = hello_world_c tiny_basic slide_show snake 6502_basic monotron-app
+APPLICATIONS = hello_world_c tiny_basic slide_show snake 6502_basic monotron-app monotron-slideshow
 
 all:
 	for subdir in $(APPLICATIONS) ; do \
