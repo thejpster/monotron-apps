@@ -27,18 +27,15 @@
 //! * `## <text>` is a sub-heading (underlined)
 
 #![cfg_attr(target_os = "none", no_std)]
-#![cfg_attr(target_os = "none", no_main)]
 
 extern crate monotron_app;
 
 use monotron_app::{Col, Host, Row};
 
-
 static UNDERLINE: &'static [u8] = b"===============================================";
-static MATERIAL: &'static [u8] = include_bytes!("slides.md");
 // static MATERIAL: &'static str = include_str!("presentation.md");
 
-struct Context<'a> {
+pub struct Context<'a> {
     page: u8,
     background: u8,
     default: u8,
@@ -53,16 +50,8 @@ struct Context<'a> {
     centre: core::cell::RefCell<bool>
 }
 
-#[cfg(not(target_os = "none"))]
-pub fn main() {
-    Host::init();
-    let r = monotron_main();
-    Host::deinit();
-    std::process::exit(r);
-}
-
 #[derive(Debug)]
-enum Keypress {
+pub enum Keypress {
     Timeout,
     Up,
     Down,
@@ -71,8 +60,7 @@ enum Keypress {
     Nothing,
 }
 
-#[no_mangle]
-pub extern "C" fn monotron_main() -> i32 {
+pub fn main(material: &[u8]) -> i32 {
     Host::set_cursor_visible(false);
     let mut ctx = Context {
         page: 1,
@@ -84,8 +72,8 @@ pub extern "C" fn monotron_main() -> i32 {
         heading_bottom: b'G',
         subheading: b'G',
         bullet: b'Y',
-        material: &MATERIAL,
-        num_pages: count_pages(&MATERIAL),
+        material: material,
+        num_pages: count_pages(material),
         centre: core::cell::RefCell::new(false)
     };
     loop {

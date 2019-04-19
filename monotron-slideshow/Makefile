@@ -1,17 +1,27 @@
-include ../Common.mk
+EXAMPLES = intro
+OUT_DIR = ./bin
 
-# Frig this so app always 'builds' (i.e. we use cargo for deps)
+BIN_FILES = $(foreach _example, $(EXAMPLES), $(OUT_DIR)/$(_example).bin)
+ARM_FILES = $(foreach _example, $(EXAMPLES), $(OUT_DIR)/$(_example))
+LINUX_FILES = $(foreach _example, $(EXAMPLES), $(OUT_DIR)/$(_example)-linux)
 
-$(OUT_DIR)/app: ./target/thumbv7em-none-eabihf/release/monotron-slideshow
-	cp ./target/thumbv7em-none-eabihf/release/monotron-slideshow $(OUT_DIR)/app
+all: directories $(BIN_FILES) $(ARM_FILES) $(LINUX_FILES)
 
-./target/thumbv7em-none-eabihf/release/monotron-slideshow: FORCE
-	cargo build --release --all --target=thumbv7em-none-eabihf
+directories: $(OUT_DIR)
 
-$(OUT_DIR)/linux: ./target/release/monotron-slideshow
-	cp ./target/release/monotron-slideshow $(OUT_DIR)/linux
+$(OUT_DIR):
+	@mkdir -p $@
 
-./target/release/monotron-slideshow: FORCE
-	cargo build --release --all
+$(OUT_DIR)/%: ./target/thumbv7em-none-eabihf/release/examples/%
+	@cp $^ $@
+
+$(OUT_DIR)/%.bin: $(OUT_DIR)/%
+	arm-none-eabi-objcopy -O binary $^ $@
+
+./target/thumbv7em-none-eabihf/release/examples/%: FORCE
+	cargo build --release --example $* --target=thumbv7em-none-eabihf
+
+$(OUT_DIR)/%-linux: ./target/release/examples/%
+	@cp $^ $@
 
 FORCE:
