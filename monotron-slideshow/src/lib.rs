@@ -33,7 +33,6 @@ extern crate monotron_app;
 use monotron_app::{Col, Host, Row};
 
 static UNDERLINE: &'static [u8] = b"===============================================";
-// static MATERIAL: &'static str = include_str!("presentation.md");
 
 pub struct Context<'a> {
     page: u8,
