@@ -610,7 +610,7 @@ pub mod target {
             scrollok(stdscr(), true);
             // Set up 64 colour combinations
             // The colours are RGBCMYKW in that order
-            // The index is [(fg * 8) + bg]
+            // The index is `(fg + (bg * 8)) + 1`
             start_color();
             let colors = [
                 COLOR_RED,
@@ -624,11 +624,12 @@ pub mod target {
             ];
             for (fgi, fg) in colors.iter().enumerate() {
                 for (bgi, bg) in colors.iter().enumerate() {
-                    let pair = ((bgi * 8) + fgi) + 1;
+                    let pair = (fgi + (bgi * 8)) + 1;
                     init_pair(pair as i16, *fg, *bg);
                 }
             }
-            attron(COLOR_PAIR((7 * 8) + 6 + 1));
+            // White (6) on Black (7)
+            attron(COLOR_PAIR(6 + (7 * 8) + 1));
             resizeterm(36, 48);
         }
 
@@ -733,6 +734,9 @@ pub mod target {
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
             let ch = getch();
+            // This is a crude conversion from local locale (UTF-8?) to Code
+            // Page 850. It will produce garbage for anything that's not a
+            // basic ASCII character
             ch as u8
         }
 
