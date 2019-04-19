@@ -1,4 +1,7 @@
 language: rust
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y libsdl2-dev
 rust:
   - stable
 install:
@@ -9,4 +12,3 @@ install:
 before_script:
   - export PATH=$PATH:/home/travis/gcc-arm-none-eabi-6-2017-q2-update/bin
 script: make
-
