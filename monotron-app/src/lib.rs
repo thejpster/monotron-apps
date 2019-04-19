@@ -687,10 +687,9 @@ pub mod target {
                 HAVE_ESCAPE.store(false, Ordering::Relaxed);
             } else {
                 match ch {
-                    b'\x07' => { addch('o' as u32); },
                     b'\x1B' => {
                         HAVE_ESCAPE.store(true, Ordering::Relaxed);
-                    },
+                    }
                     _ => {
                         let unicode_ch = cp850_to_unicode(ch);
                         let mut buffer = [0u8; 4];
@@ -698,7 +697,7 @@ pub mod target {
                         for b in result.bytes() {
                             addch(b.into());
                         }
-                    },
+                    }
                 }
             }
             refresh();
@@ -771,7 +770,36 @@ pub mod target {
 
 fn cp850_to_unicode(ascii_ch: u8) -> char {
     match ascii_ch {
-        0...127 => ascii_ch.into(),
+        0 => '\u{0000}',
+        1 => '\u{263A}',
+        2 => '\u{263B}',
+        3 => '\u{2665}',
+        4 => '\u{2666}',
+        5 => '\u{2663}',
+        6 => '\u{2660}',
+        7 => '\u{2022}',
+        8 => '\u{25D8}',
+        11 => '\u{2642}',
+        12 => '\u{2640}',
+        14 => '\u{266B}',
+        15 => '\u{263C}',
+        16 => '\u{25BA}',
+        17 => '\u{25C4}',
+        18 => '\u{2195}',
+        19 => '\u{203C}',
+        20 => '\u{00B6}',
+        21 => '\u{00A7}',
+        22 => '\u{25AC}',
+        23 => '\u{21A8}',
+        24 => '\u{2191}',
+        25 => '\u{2193}',
+        26 => '\u{2192}',
+        27 => '\u{2190}',
+        28 => '\u{221F}',
+        29 => '\u{2194}',
+        30 => '\u{25B2}',
+        31 => '\u{25BC}',
+        b'\t' | b'\r' | b'\n' | 32...127 => ascii_ch.into(),
         128 => '\u{00C7}',
         129 => '\u{00FC}',
         130 => '\u{00E9}',
