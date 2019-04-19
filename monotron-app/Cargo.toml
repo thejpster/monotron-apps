@@ -7,4 +7,5 @@ authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 print-panic = []
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
-ncurses = "5.99.0"
+ncurses = { version = "5.99.0", features = ["wide"] }
+libc = { version = "0.2", default-features = false }

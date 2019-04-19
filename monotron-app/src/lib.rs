@@ -448,14 +448,8 @@ pub mod target {
     impl core::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> core::fmt::Result {
             let (tbl, ctx) = Table::get();
-            for ch in s.chars() {
-                if ch.is_ascii() {
-                    // CodePage 850 and Unicode are the same here
-                    (tbl.putchar)(ctx, ch as u32 as u8);
-                } else {
-                    // TODO need a more intelligent mapping here
-                    (tbl.putchar)(ctx, b'?');
-                }
+            for ch in s.bytes() {
+                (tbl.putchar)(ctx, ch);
             }
             Ok(())
         }
@@ -584,60 +578,16 @@ pub mod target {
 /// Implementation used when building code for Linux/Windows
 pub mod target {
     use super::*;
-    use std::fmt::Write as _fmt_Write;
     use ncurses::*;
 
     impl std::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> std::fmt::Result {
-            use ncurses::*;
-            use std::sync::atomic::{AtomicBool, Ordering};
-            static HAVE_ESCAPE: AtomicBool = AtomicBool::new(false);
-            for ch in s.chars() {
-                if HAVE_ESCAPE.load(Ordering::Relaxed) {
-                    match ch {
-                        'Z' | 'z' => {
-                            let mut attr = 0;
-                            let mut pair = 0;
-                            attr_get(&mut attr, &mut pair);
-                            bkgd(COLOR_PAIR(pair));
-                            clear();
-                        },
-                        'R' => Host::set_fg(0),
-                        'G' => Host::set_fg(1),
-                        'B' => Host::set_fg(2),
-                        'C' => Host::set_fg(3),
-                        'M' => Host::set_fg(4),
-                        'Y' => Host::set_fg(5),
-                        'W' => Host::set_fg(6),
-                        'K' => Host::set_fg(7),
-                        'r' => Host::set_bg(0),
-                        'g' => Host::set_bg(1),
-                        'b' => Host::set_bg(2),
-                        'c' => Host::set_bg(3),
-                        'm' => Host::set_bg(4),
-                        'y' => Host::set_bg(5),
-                        'w' => Host::set_bg(6),
-                        'k' => Host::set_bg(7),
-                        /* double height top */
-                        '^' => { },
-                        /* double height bottom */
-                        'v' => { },
-                        /* normal height bottom */
-                        '-' => { },
-                        _ => panic!("Unsupported escape sequence {}", ch),
-                    }
-                    HAVE_ESCAPE.store(false, Ordering::Relaxed);
-                } else {
-                    match ch {
-                        '\u{0007}' => { addch('o' as u32); },
-                        '\u{001B}' => {
-                            HAVE_ESCAPE.store(true, Ordering::Relaxed);
-                        },
-                        _ => { addch(ch as u8 as u32); },
-                    }
-                }
+            for b in s.bytes() {
+                // Ugh - this will force UTF-8 (the Rust native string format)
+                // into ASCII CodePage 850, which will do bad things for
+                // characters that aren't in the basic ASCII set.
+                Host::putchar(b);
             }
-            refresh();
             Ok(())
         }
     }
@@ -650,6 +600,9 @@ pub mod target {
 
         /// Call once at start-up to configure terminal
         pub fn init() {
+            unsafe {
+                libc::setlocale(libc::LC_ALL, [0].as_ptr());
+            }
             initscr();
             cbreak();
             noecho();
@@ -695,12 +648,60 @@ pub mod target {
 
         /// Send a single 8-bit character to the screen.
         pub fn putchar(ch: u8) {
-            if ch <= 0x7F {
-                let unicode_scalar = ch as char;
-                write!(Host, "{}", unicode_scalar).unwrap();
+            use ncurses::*;
+            use std::sync::atomic::{AtomicBool, Ordering};
+            static HAVE_ESCAPE: AtomicBool = AtomicBool::new(false);
+            if HAVE_ESCAPE.load(Ordering::Relaxed) {
+                match ch {
+                    b'Z' | b'z' => {
+                        let mut attr = 0;
+                        let mut pair = 0;
+                        attr_get(&mut attr, &mut pair);
+                        bkgd(COLOR_PAIR(pair));
+                        clear();
+                    },
+                    b'R' => Host::set_fg(0),
+                    b'G' => Host::set_fg(1),
+                    b'B' => Host::set_fg(2),
+                    b'C' => Host::set_fg(3),
+                    b'M' => Host::set_fg(4),
+                    b'Y' => Host::set_fg(5),
+                    b'W' => Host::set_fg(6),
+                    b'K' => Host::set_fg(7),
+                    b'r' => Host::set_bg(0),
+                    b'g' => Host::set_bg(1),
+                    b'b' => Host::set_bg(2),
+                    b'c' => Host::set_bg(3),
+                    b'm' => Host::set_bg(4),
+                    b'y' => Host::set_bg(5),
+                    b'w' => Host::set_bg(6),
+                    b'k' => Host::set_bg(7),
+                    /* double height top */
+                    b'^' => { },
+                    /* double height bottom */
+                    b'v' => { },
+                    /* normal height bottom */
+                    b'-' => { },
+                    _ => panic!("Unsupported escape sequence {}", ch),
+                }
+                HAVE_ESCAPE.store(false, Ordering::Relaxed);
             } else {
-                write!(Host, "#").unwrap();
+                match ch {
+                    b'\x07' => { addch('o' as u32); },
+                    b'\x1B' => {
+                        HAVE_ESCAPE.store(true, Ordering::Relaxed);
+                    },
+                    _ => {
+                        let unicode_ch = cp850_to_unicode(ch);
+                        let mut buffer = [0u8; 4];
+                        let result = unicode_ch.encode_utf8(&mut buffer);
+                        for b in result.bytes() {
+                            addch(b.into());
+                        }
+                    },
+                }
             }
+            refresh();
         }
 
         /// Send a single 8-bit character to the screen.
@@ -766,6 +767,140 @@ pub mod target {
         }
     }
 
+}
+
+fn cp850_to_unicode(ascii_ch: u8) -> char {
+    match ascii_ch {
+        0...127 => ascii_ch.into(),
+        128 => '\u{00C7}',
+        129 => '\u{00FC}',
+        130 => '\u{00E9}',
+        131 => '\u{00E2}',
+        132 => '\u{00E4}',
+        133 => '\u{00E0}',
+        134 => '\u{00E5}',
+        135 => '\u{00E7}',
+        136 => '\u{00EA}',
+        137 => '\u{00EB}',
+        138 => '\u{00E8}',
+        139 => '\u{00EF}',
+        140 => '\u{00EE}',
+        141 => '\u{00EC}',
+        142 => '\u{00C4}',
+        143 => '\u{00C5}',
+        144 => '\u{00C9}',
+        145 => '\u{00E6}',
+        146 => '\u{00C6}',
+        147 => '\u{00F4}',
+        148 => '\u{00F6}',
+        149 => '\u{00F2}',
+        150 => '\u{00FB}',
+        151 => '\u{00F9}',
+        152 => '\u{00FF}',
+        153 => '\u{00D6}',
+        154 => '\u{00DC}',
+        155 => '\u{00F8}',
+        156 => '\u{00A3}',
+        157 => '\u{00D8}',
+        158 => '\u{00D7}',
+        159 => '\u{0192}',
+        160 => '\u{00E1}',
+        161 => '\u{00ED}',
+        162 => '\u{00F3}',
+        163 => '\u{00FA}',
+        164 => '\u{00F1}',
+        165 => '\u{00D1}',
+        166 => '\u{00AA}',
+        167 => '\u{00BA}',
+        168 => '\u{00BF}',
+        169 => '\u{00AE}',
+        170 => '\u{00AC}',
+        171 => '\u{00BD}',
+        172 => '\u{00BC}',
+        173 => '\u{00A1}',
+        174 => '\u{00AB}',
+        175 => '\u{00BB}',
+        176 => '\u{2591}',
+        177 => '\u{2592}',
+        178 => '\u{2593}',
+        179 => '\u{2502}',
+        180 => '\u{2524}',
+        181 => '\u{00C1}',
+        182 => '\u{00C2}',
+        183 => '\u{00C0}',
+        184 => '\u{00A9}',
+        185 => '\u{2563}',
+        186 => '\u{2551}',
+        187 => '\u{2557}',
+        188 => '\u{255D}',
+        189 => '\u{00A2}',
+        190 => '\u{00A5}',
+        191 => '\u{2510}',
+        192 => '\u{2514}',
+        193 => '\u{2534}',
+        194 => '\u{252C}',
+        195 => '\u{251C}',
+        196 => '\u{2500}',
+        197 => '\u{253C}',
+        198 => '\u{00E3}',
+        199 => '\u{00C3}',
+        200 => '\u{255A}',
+        201 => '\u{2554}',
+        202 => '\u{2569}',
+        203 => '\u{2566}',
+        204 => '\u{2560}',
+        205 => '\u{2550}',
+        206 => '\u{256C}',
+        207 => '\u{00A4}',
+        208 => '\u{00F0}',
+        209 => '\u{00D0}',
+        210 => '\u{00CA}',
+        211 => '\u{00CB}',
+        212 => '\u{00C8}',
+        213 => '\u{0131}',
+        214 => '\u{00CD}',
+        215 => '\u{00CE}',
+        216 => '\u{00CF}',
+        217 => '\u{2518}',
+        218 => '\u{250C}',
+        219 => '\u{2588}',
+        220 => '\u{2584}',
+        221 => '\u{00A6}',
+        222 => '\u{00CC}',
+        223 => '\u{2580}',
+        224 => '\u{00D3}',
+        225 => '\u{00DF}',
+        226 => '\u{00D4}',
+        227 => '\u{00D2}',
+        228 => '\u{00F5}',
+        229 => '\u{00D5}',
+        230 => '\u{00B5}',
+        231 => '\u{00FE}',
+        232 => '\u{00DE}',
+        233 => '\u{00DA}',
+        234 => '\u{00DB}',
+        235 => '\u{00D9}',
+        236 => '\u{00FD}',
+        237 => '\u{00DD}',
+        238 => '\u{00AF}',
+        239 => '\u{00B4}',
+        240 => '\u{00AD}',
+        241 => '\u{00B1}',
+        242 => '\u{2017}',
+        243 => '\u{00BE}',
+        244 => '\u{00B6}',
+        245 => '\u{00A7}',
+        246 => '\u{00F7}',
+        247 => '\u{00B8}',
+        248 => '\u{00B0}',
+        249 => '\u{00A8}',
+        250 => '\u{00B7}',
+        251 => '\u{00B9}',
+        252 => '\u{00B3}',
+        253 => '\u{00B2}',
+        254 => '\u{25A0}',
+        255 => '\u{00A0}',
+    }
 }
 
 /// Useful things people should have in scope.
