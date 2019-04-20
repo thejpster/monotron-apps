@@ -3,9 +3,13 @@ name = "monotron-app"
 version = "0.1.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 
+[lib]
+crate-type = ["staticlib", "rlib"]
+
 [features]
 print-panic = []
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
-ncurses = { version = "5.99.0", features = ["wide"] }
-libc = { version = "0.2", default-features = false }
+sdl2 = "0.32"
+vga-framebuffer = "0.7.5"
+lazy_static = "1.3"

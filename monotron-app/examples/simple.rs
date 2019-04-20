@@ -8,7 +8,10 @@ use monotron_app::Host;
 
 #[cfg(not(target_os = "none"))]
 pub fn main() {
-    std::process::exit(monotron_main());
+    monotron_app::Host::init();
+    let r = monotron_main();
+    monotron_app::Host::deinit();
+    std::process::exit(r);
 }
 
 #[no_mangle]

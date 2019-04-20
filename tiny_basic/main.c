@@ -140,7 +140,7 @@
 #include <string.h>
 
 // size of our program ram
-#define kRamSize   20*1024 /* All that fits in Monotron's 24 KiB usable SRAM */
+#define kRamSize   19*1024 /* All that fits in Monotron's 24 KiB usable SRAM */
 
 ////////////////////
 
@@ -762,6 +762,16 @@ static short int expression(void) {
     }
     return 0;
 }
+
+/***************************************************************************/
+#ifdef LINUX_BUILD
+int main(int argc, const char** argv) {
+    init();
+    int result = monotron_main();
+    deinit();
+    return result;
+}
+#endif
 
 /***************************************************************************/
 int monotron_main(void) {

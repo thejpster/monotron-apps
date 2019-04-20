@@ -1,12 +1,15 @@
 language: rust
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y libsdl2-dev libegl1-mesa-dev libgles2-mesa-dev
 rust:
   - stable
 install:
   - pushd /
   - rustup target add thumbv7em-none-eabihf
+  - rustup target add thumbv7em-none-eabi
   - popd
   - curl https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2 | tar -C /home/travis -x -j
 before_script:
   - export PATH=$PATH:/home/travis/gcc-arm-none-eabi-6-2017-q2-update/bin
 script: make
-

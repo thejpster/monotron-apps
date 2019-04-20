@@ -167,6 +167,7 @@ static void pigfx_fgcol(unsigned int color);
 static void pigfx_hide_cursor(void);
 static void pigfx_movecursor(unsigned int row, unsigned int col);
 static void pigfx_print(const char* s);
+static char * utoa(unsigned int value, char* str, int base);
 static void pigfx_printnum(unsigned int num);
 static unsigned int xorshift128(void);
 static void new_apple(void);
@@ -210,10 +211,44 @@ static void pigfx_print(const char* s) {
     puts(s);
 }
 
+static char * utoa(unsigned int value, char* str, int base)
+{
+  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+  int i, j;
+  unsigned remainder;
+  char c;
+
+  /* Check base is supported. */
+  if ((base < 2) || (base > 36))
+    {
+      str[0] = '\0';
+      return NULL;
+    }
+
+  /* Convert to string. Digits are in reverse order.  */
+  i = 0;
+  do
+    {
+      remainder = value % base;
+      str[i++] = digits[remainder];
+      value = value / base;
+    } while (value != 0);
+  str[i] = '\0';
+
+  /* Reverse string.  */
+  for (j = 0, i--; j < i; j++, i--)
+    {
+      c = str[j];
+      str[j] = str[i];
+      str[i] = c;
+    }
+
+  return str;
+}
 static void pigfx_printnum(unsigned int num) {
     // 4294967296 is the largest we can print
     char buffer[12] = { 0 };
-    monotron_utoa(num, buffer, 10);
+    utoa(num, buffer, 10);
     puts(buffer);
 }
 
@@ -679,6 +714,15 @@ static void game(void) {
         }
     }
 }
+
+#ifdef LINUX_BUILD
+int main(int argc, const char** argv) {
+    init();
+    int result = monotron_main();
+    deinit();
+    return result;
+}
+#endif
 
 int monotron_main(void) {
     while (1) {
