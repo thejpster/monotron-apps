@@ -3,6 +3,9 @@ name = "monotron-app"
 version = "0.1.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 
+[lib]
+crate-type = ["staticlib", "rlib"]
+
 [features]
 print-panic = []
 

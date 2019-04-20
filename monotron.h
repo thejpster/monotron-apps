@@ -190,6 +190,10 @@ typedef enum waveform_t {
  *
  *****************************************************************************/
 
+void init(void);
+
+void deinit(void);
+
 /**
  * Convert a number to a string.
  *

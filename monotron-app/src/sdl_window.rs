@@ -10,7 +10,7 @@ pub struct Context<'a> {
 pub struct FakeHardware {
     pub event_pump: sdl2::EventPump,
     pub canvas: sdl2::render::Canvas<sdl2::video::Window>,
-    point: sdl2::rect::Point
+    point: sdl2::rect::Point,
 }
 
 // We need to do this to put a Context in a static. But is this a good idea?
@@ -40,8 +40,12 @@ impl vga_framebuffer::Hardware for FakeHardware {
                 if green_bit { 0xFF } else { 0x00 },
                 if blue_bit { 0xFF } else { 0x00 },
             ));
-            self.canvas.draw_point(self.point.offset(self.point.x, 0)).unwrap();
-            self.canvas.draw_point(self.point.offset(self.point.x + 1, 0)).unwrap();
+            self.canvas
+                .draw_point(self.point.offset(self.point.x, 0))
+                .unwrap();
+            self.canvas
+                .draw_point(self.point.offset(self.point.x + 1, 0))
+                .unwrap();
             let mut new_point = self.point.offset(1, 0);
             if new_point.x == 400 {
                 new_point = self.point.offset(-self.point.x, 1);
@@ -69,7 +73,7 @@ impl<'a> Context<'a> {
         let d = FakeHardware {
             canvas,
             event_pump,
-            point: (0, 0).into()
+            point: (0, 0).into(),
         };
         let mut fb = vga_framebuffer::FrameBuffer::new();
         fb.init(d);
@@ -82,8 +86,7 @@ impl<'a> Context<'a> {
     pub fn toggle_fullscreen(&mut self) {
         use sdl2::video::FullscreenType;
         let ref mut canvas = self.fb.borrow_hw_mut().unwrap().canvas;
-        canvas
-            .set_draw_color(sdl2::pixels::Color::RGB(0, 0, 0));
+        canvas.set_draw_color(sdl2::pixels::Color::RGB(0, 0, 0));
         canvas.clear();
         if canvas.window_mut().fullscreen_state() == FullscreenType::Off {
             canvas
@@ -118,7 +121,14 @@ impl<'a> Context<'a> {
                 } => {
                     need_toggle = true;
                 }
+                Event::KeyDown {
+                    keycode: Some(Keycode::Return),
+                    ..
+                } => {
+                    self.keypresses.push_back(b'\r');
+                }
                 Event::TextInput { text, .. } => {
+                    println!("Got {:?}", text);
                     for b in text.bytes() {
                         self.keypresses.push_back(b);
                     }

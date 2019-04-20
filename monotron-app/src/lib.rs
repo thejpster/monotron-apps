@@ -654,10 +654,14 @@ pub mod target {
 
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
-            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
-                ctx.keypresses.pop_front().unwrap()
-            } else {
-                panic!("Failed to get lock");
+            loop {
+                if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                    if let Some(ch) = ctx.keypresses.pop_front() {
+                        break ch;
+                    }
+                }
+                // Need to pump the event loop to get keypresses
+                wfvbi();
             }
         }
 
@@ -712,6 +716,190 @@ pub mod target {
             // ?
         }
     }
+}
+
+#[no_mangle]
+/// C FFI for Host::getsize
+pub extern "C" fn getsize() -> (u16, u16) {
+    Host::getsize()
+}
+
+#[no_mangle]
+#[cfg(not(target_os = "none"))]
+/// C FFI for Host::init
+pub extern "C" fn init() {
+    Host::init()
+}
+
+#[no_mangle]
+#[cfg(not(target_os = "none"))]
+/// C FFI for Host::deinit
+pub extern "C" fn deinit() {
+    Host::deinit()
+}
+
+#[no_mangle]
+/// C FFI for Host::putchar
+pub extern "C" fn putchar(ch: u8) {
+    Host::putchar(ch)
+}
+
+#[no_mangle]
+/// C FFI for Host::puts
+pub unsafe extern "C" fn puts(null_term_str: *const u8) {
+    let mut len = 0usize;
+    while *null_term_str.offset(len as isize) != 0 {
+        len += 1;
+    }
+    Host::puts(core::slice::from_raw_parts(null_term_str, len));
+}
+
+#[no_mangle]
+/// C FFI for Host::kbhit
+pub extern "C" fn kbhit() -> i32 {
+    if Host::kbhit() { 1 } else { 0 }
+}
+
+#[no_mangle]
+/// C FFI for Host::readc
+pub extern "C" fn getchar() -> u8 {
+    Host::readc()
+}
+
+#[no_mangle]
+/// C FFI for Host::wfvbi
+pub extern "C" fn wfvbi() {
+    #[cfg(not(target_os = "none"))]
+    Host::wfvbi()
+}
+
+#[no_mangle]
+/// C FFI for Host::move_cursor
+pub extern "C" fn move_cursor(row: u8, col: u8) {
+    Host::move_cursor(Row(row), Col(col))
+}
+
+#[no_mangle]
+/// C FFI for Host::play
+pub extern "C" fn play(frequency: u32, channel: i32, waveform: i32, volume: u8) {
+    let channel = match channel {
+        0 => Some(Channel::Channel0),
+        1 => Some(Channel::Channel1),
+        2 => Some(Channel::Channel2),
+        _ => None,
+    };
+    let waveform = match waveform {
+        0 => Some(Waveform::Square),
+        1 => Some(Waveform::Sine),
+        2 => Some(Waveform::Sawtooth),
+        3 => Some(Waveform::Noise),
+        _ => None,
+    };
+    if let (Some(ch), Some(wv)) = (channel, waveform) {
+        Host::play(Frequency(frequency), ch, wv, volume)
+    }
+}
+
+#[no_mangle]
+/// C FFI for Host::set_font
+pub extern "C" fn font_normal() {
+    let _ = Host::set_font(Font::Normal);
+}
+
+#[no_mangle]
+/// C FFI for Host::set_font
+pub extern "C" fn font_teletext() {
+    let _ = Host::set_font(Font::Teletext);
+}
+
+#[no_mangle]
+/// C FFI for Host::get_joystick
+pub extern "C" fn get_joystick() -> JoystickState {
+    Host::get_joystick()
+}
+
+/// True if joystick is pointing up.
+#[no_mangle]
+pub extern "C" fn joystick_is_up(state: u8) -> bool {
+    (state & 0b10000) != 0
+}
+
+/// True if joystick is pointing down.
+#[no_mangle]
+pub extern "C" fn joystick_is_down(state: u8) -> bool {
+    (state & 0b01000) != 0
+}
+
+/// True if joystick is pointing left.
+#[no_mangle]
+pub extern "C" fn joystick_is_left(state: u8) -> bool {
+    (state & 0b00100) != 0
+}
+
+/// True if joystick is pointing right.
+#[no_mangle]
+pub extern "C" fn joystick_is_right(state: u8) -> bool {
+    (state & 0b00010) != 0
+}
+
+/// True if joystick is pointing right.
+#[no_mangle]
+pub extern "C" fn joystick_fire_pressed(state: u8) -> bool {
+    (state & 0b00001) != 0
+}
+
+#[no_mangle]
+/// Ugh
+pub extern "C" fn put_separated_sixel(_char: u8) {
+
+}
+
+#[no_mangle]
+/// C FFI for Host::set_cursor_visible
+pub extern "C" fn set_cursor_visible(visible: bool) {
+    Host::set_cursor_visible(visible)
+}
+
+#[no_mangle]
+/// _sbrk is required by newlib
+pub extern "C" fn _sbrk() {
+
+}
+
+#[no_mangle]
+/// _write is required by newlib
+pub extern "C" fn _write() {
+    
+}
+
+#[no_mangle]
+/// _close is required by newlib
+pub extern "C" fn _close() {
+    
+}
+
+#[no_mangle]
+/// _lseek is required by newlib
+pub extern "C" fn _lseek() {
+    
+}
+
+#[no_mangle]
+/// _read is required by newlib
+pub extern "C" fn _read() {
+    
+}
+
+#[no_mangle]
+/// _fstat is required by newlib
+pub extern "C" fn _fstat() {
+    
+}
+
+#[no_mangle]
+/// _isatty is required by newlib
+pub extern "C" fn _isatty() {
+    
 }
 
 /// Useful things people should have in scope.
