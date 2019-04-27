@@ -127,6 +127,18 @@ impl<'a> Context<'a> {
                 } => {
                     self.keypresses.push_back(b'\r');
                 }
+                Event::KeyDown {
+                    keycode: Some(Keycode::Backspace),
+                    ..
+                } => {
+                    self.keypresses.push_back(8);
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    self.keypresses.push_back(27);
+                }
                 Event::TextInput { text, .. } => {
                     println!("Got {:?}", text);
                     for b in text.bytes() {
