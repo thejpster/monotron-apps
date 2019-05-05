@@ -2,7 +2,8 @@
 #
 # Copyright (c) Jonathan 'theJPster' Pallant 2019
 #
-# Available under the MIT or Apache 2.0 licence, at your option.
+# Available under the Blue Oak Council licence
+# (https://blueoakcouncil.org/license/1.0.0)
 
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CRATE_DIR = $(ROOT_DIR)/monotron-app
