@@ -5,6 +5,6 @@ authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 edition = "2018"
 
 [dependencies]
-monotron-app = { path = "../monotron-app" }
+monotron-app = { path = "../../monotron-app" }
 heapless = "*"
 

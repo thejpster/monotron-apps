@@ -4,14 +4,14 @@
 #
 # Available under the MIT or Apache 2.0 licence, at your option.
 
-CFLAGS = -fno-builtin -std=c11 -Wall -Werror -pedantic -I.. -Wl,--gc-sections
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+CFLAGS = -fno-builtin -std=c11 -Wall -Werror -pedantic -I$(ROOT_DIR) -Wl,--gc-sections
 ARM_CFLAGS = $(CFLAGS) -mcpu=cortex-m4 -nostartfiles -mthumb -Os
 POSIX_CFLAGS = $(CFLAGS) -g -D_POSIX_C_SOURCE=199309L -DLINUX_BUILD -lSDL2 -ldl -lpthread
 
 ARM_CC = arm-none-eabi-gcc
 OUT_DIR = ./bin
 MKDIR_P = mkdir -p
-ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 RUST_LIB = $(ROOT_DIR)/monotron-app/Cargo.toml
 
 all: directories $(OUT_DIR)/app.bin $(OUT_DIR)/linux

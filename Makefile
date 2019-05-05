@@ -1,4 +1,4 @@
-APPLICATIONS = hello_world_c tiny_basic snake 6502_basic monotron-app monotron-slideshow
+APPLICATIONS := $(wildcard examples/*)
 
 all: $(APPLICATIONS)
 

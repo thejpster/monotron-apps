@@ -28,12 +28,12 @@ pub extern "C" fn monotron_main() -> i32 {
     let _ = buf.push_str("Welcome to Oxidize - Press e to edit this string.");
     let mut f = Fire::new();
     let mut msg_start = 47isize;
-    let mut frames = [0, 0, 0, 1].iter().cycle();
+    let mut frames = [0, 0, 0, 0, 1].iter().cycle();
+    Host::puts(b"\x1BW\x1Bk\x1BZ");
     loop {
         Host::wfvbi();
         Host::set_cursor_visible(false);
-        Host::puts(b"\x1BW\x1Bk\x1BZ");
-
+        Host::move_cursor(monotron_app::Row(0), monotron_app::Col(0));
         Host::puts(b"\x1BR \xB2\xB2\xB2  \xB2   \xB2 \xB2 \xB2\xB2\xB2  \xB2 \xB2\xB2\xB2\xB2 \xB2\xB2\xB2\xB2\xB2 \x1BB\xB2\xB2\xB2\xB2 \xB2\xB2\xB2\xB2 \xB2 \xB2\xB2\xB2\xB2");
         Host::puts(b"\x1BR\xB2   \xB2  \xB2 \xB2  \xB2 \xB2  \xB2 \xB2    \xB2 \xB2     \x1BB   \xB2 \xB2  \xB2 \xB2 \xB2  \xB2");
         Host::puts(b"\x1BR\xB2   \xB2   \xB2   \xB2 \xB2  \xB2 \xB2   \xB2  \xB2\xB2\xB2\xB2\xB2 \x1BB\xB2\xB2\xB2\xB2 \xB2  \xB2 \xB2 \xB2\xB2\xB2\xB2");
@@ -65,6 +65,10 @@ pub extern "C" fn monotron_main() -> i32 {
                 break;
             }
         }
+        while col < 48 {
+            Host::putchar(b' ');
+            col += 1;
+        }
         Host::move_cursor(monotron_app::Row(SCROLL_ROW + 1), monotron_app::Col(col_start));
         Host::puts(b"\x1Bv");
         col = col_start;
@@ -75,6 +79,10 @@ pub extern "C" fn monotron_main() -> i32 {
                 // Stop when screen is full
                 break;
             }
+        }
+        while col < 48 {
+            Host::putchar(b' ');
+            col += 1;
         }
         // Shift left one
         let sub = frames.next().unwrap();
@@ -136,7 +144,7 @@ fn edit_string<T>(buf: &mut heapless::String<T>) where T: heapless::ArrayLength<
 
 struct Fire {
     seed: u32,
-    buffer: [u32; Fire::FLAME_BUFFER_LEN]
+    buffer: [u8; Fire::FLAME_BUFFER_LEN]
 }
 
 impl Fire {
@@ -148,7 +156,7 @@ impl Fire {
     fn new() -> Fire {
         Fire {
             seed: 123456789,
-            buffer: [0u32; Self::FLAME_BUFFER_LEN]
+            buffer: [0u8; Self::FLAME_BUFFER_LEN]
         }
     }
 

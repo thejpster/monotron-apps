@@ -1,7 +1,6 @@
 *.o
-*/app
-*/app.bin
-*/bin
+examples/*/bin
+monotron-app/bin
 **/target/
 **/Cargo.lock
 

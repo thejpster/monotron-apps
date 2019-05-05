@@ -1,4 +1,4 @@
-include ../Common.mk
+include ../../Common.mk
 
 # Frig this so app always 'builds' (i.e. we use cargo for deps)
 
