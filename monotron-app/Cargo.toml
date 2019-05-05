@@ -3,9 +3,10 @@ name = "monotron-app"
 version = "0.5.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 readme = "README.md"
-licence = "LICENCE.md"
+license = "LICENCE.md"
 description = "Support crate for writing Monotron applications."
 keywords = ["sdl2", "monotron", "embedded", "arm"]
+repository = "https://github.com/thejpster/monotron-apps"
 
 [lib]
 crate-type = ["staticlib", "rlib"]
