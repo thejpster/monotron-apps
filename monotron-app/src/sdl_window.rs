@@ -30,11 +30,11 @@ impl vga_framebuffer::Hardware for FakeHardware {
 
     fn vsync_off(&mut self) {}
 
-    fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
-        for bit in (0..8).rev() {
-            let red_bit = red & (1 << bit) != 0;
-            let green_bit = green & (1 << bit) != 0;
-            let blue_bit = blue & (1 << bit) != 0;
+    fn write_pixels(&mut self, xrgb: vga_framebuffer::XRGBColour) {
+        for bit in 0..8 {
+            let red_bit = xrgb.pixel_has_red(bit);
+            let green_bit = xrgb.pixel_has_green(bit);
+            let blue_bit = xrgb.pixel_has_blue(bit);
             self.canvas.set_draw_color(sdl2::pixels::Color::RGB(
                 if red_bit { 0xFF } else { 0x00 },
                 if green_bit { 0xFF } else { 0x00 },

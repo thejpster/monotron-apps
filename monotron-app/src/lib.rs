@@ -64,6 +64,9 @@ pub struct Table {
     change_font: extern "C" fn(*const Context, u32, *const u8),
     get_joystick: extern "C" fn(*const Context) -> u8,
     set_cursor_visible: extern "C" fn(*mut Context, u8),
+    read_char_at: extern "C" fn(*mut Context, u8, u8) -> u16,
+    // TODO: Add a u32 timer API in milliseconds. Will wrap every 42 days,
+    // like Windows 95 did.
 }
 
 /// Represents the Monotron we're running on. Can be passed to `write!` and
@@ -508,6 +511,16 @@ pub mod target {
             (tbl.move_cursor)(ctx, row.0, col.0);
         }
 
+        /// Read back what's on the screen.
+        ///
+        /// Returns the 8-bit glyph in the given cell, and the attribute for
+        /// that cell.
+        pub fn read_char_at(row: Row, col: Col) -> (u8, u8) {
+            let (tbl, ctx) = Table::get();
+            let word = (tbl.read_char_at)(ctx, row.0, col.0);
+            ((word >> 8) as u8, word as u8)
+        }
+
         /// Start playing a tone. It will continue.
         pub fn play<F>(frequency: F, channel: Channel, waveform: Waveform, volume: u8)
         where
@@ -680,16 +693,36 @@ pub mod target {
         /// Move the cursor on the screen.
         pub fn move_cursor(row: Row, col: Col) {
             use vga_framebuffer::BaseConsole;
-            if col.0 as usize <= vga_framebuffer::TEXT_MAX_COL {
-                if row.0 as usize <= vga_framebuffer::TEXT_MAX_ROW {
-                    if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
-                        let p = vga_framebuffer::Position::new(
-                            vga_framebuffer::Row(row.0),
-                            vga_framebuffer::Col(col.0),
-                        );
-                        ctx.fb.set_pos(p).unwrap();
-                    }
+            if col.0 as usize <= vga_framebuffer::TEXT_MAX_COL
+                && row.0 as usize <= vga_framebuffer::TEXT_MAX_ROW
+            {
+                if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                    let p = vga_framebuffer::Position::new(
+                        vga_framebuffer::Row(row.0),
+                        vga_framebuffer::Col(col.0),
+                    );
+                    ctx.fb.set_pos(p).unwrap();
                 }
+            }
+        }
+
+        /// Read back what's on the screen.
+        ///
+        /// Returns the 8-bit glyph in the given cell, and the attribute for
+        /// that cell.
+        pub fn read_char_at(row: Row, col: Col) -> (u8, u8) {
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                let p = vga_framebuffer::Position::new(
+                    vga_framebuffer::Row(row.0),
+                    vga_framebuffer::Col(col.0),
+                );
+                if let Some((glyph, attr)) = ctx.fb.read_glyph_at(p) {
+                    (glyph as u8, attr.as_u8())
+                } else {
+                    (0, 0)
+                }
+            } else {
+                (0, 0)
             }
         }
 
@@ -702,8 +735,21 @@ pub mod target {
         }
 
         /// Move the cursor on the screen.
-        pub fn set_font(_font: Font) -> Result<(), &'static str> {
-            Ok(())
+        pub fn set_font(font: Font) -> Result<(), &'static str> {
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                match font {
+                    Font::Normal => ctx
+                        .fb
+                        .set_custom_font(Some(&vga_framebuffer::freebsd_cp850::FONT_DATA)),
+                    Font::Teletext => ctx
+                        .fb
+                        .set_custom_font(Some(&vga_framebuffer::freebsd_teletext::FONT_DATA)),
+                    Font::Custom(_ram) => unimplemented!(),
+                }
+                Ok(())
+            } else {
+                Err("Failed video lock")
+            }
         }
 
         /// Get the Joystick state
@@ -712,8 +758,10 @@ pub mod target {
         }
 
         /// Show/hide the cursor
-        pub fn set_cursor_visible(_visible: bool) {
-            // ?
+        pub fn set_cursor_visible(visible: bool) {
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.fb.set_cursor_visible(visible);
+            }
         }
     }
 }
@@ -757,7 +805,11 @@ pub unsafe extern "C" fn puts(null_term_str: *const u8) {
 #[no_mangle]
 /// C FFI for Host::kbhit
 pub extern "C" fn kbhit() -> i32 {
-    if Host::kbhit() { 1 } else { 0 }
+    if Host::kbhit() {
+        1
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
@@ -850,9 +902,7 @@ pub extern "C" fn joystick_fire_pressed(state: u8) -> bool {
 
 #[no_mangle]
 /// Ugh
-pub extern "C" fn put_separated_sixel(_char: u8) {
-
-}
+pub extern "C" fn put_separated_sixel(_char: u8) {}
 
 #[no_mangle]
 /// C FFI for Host::set_cursor_visible
@@ -861,46 +911,39 @@ pub extern "C" fn set_cursor_visible(visible: bool) {
 }
 
 #[no_mangle]
-/// _sbrk is required by newlib
-pub extern "C" fn _sbrk() {
-
+/// C FFI for Host::read_char_at
+pub extern "C" fn read_char_at(row: u8, col: u8) -> u16 {
+    let (glyph, attr) = Host::read_char_at(Row(row), Col(col));
+    ((glyph as u16) << 8) + (attr as u16)
 }
+
+#[no_mangle]
+/// _sbrk is required by newlib
+pub extern "C" fn _sbrk() {}
 
 #[no_mangle]
 /// _write is required by newlib
-pub extern "C" fn _write() {
-    
-}
+pub extern "C" fn _write() {}
 
 #[no_mangle]
 /// _close is required by newlib
-pub extern "C" fn _close() {
-    
-}
+pub extern "C" fn _close() {}
 
 #[no_mangle]
 /// _lseek is required by newlib
-pub extern "C" fn _lseek() {
-    
-}
+pub extern "C" fn _lseek() {}
 
 #[no_mangle]
 /// _read is required by newlib
-pub extern "C" fn _read() {
-    
-}
+pub extern "C" fn _read() {}
 
 #[no_mangle]
 /// _fstat is required by newlib
-pub extern "C" fn _fstat() {
-    
-}
+pub extern "C" fn _fstat() {}
 
 #[no_mangle]
 /// _isatty is required by newlib
-pub extern "C" fn _isatty() {
-    
-}
+pub extern "C" fn _isatty() {}
 
 /// Useful things people should have in scope.
 pub mod prelude {
