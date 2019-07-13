@@ -10,4 +10,4 @@ opt-level = "z"
 lto = true
 
 [dependencies]
-monotron-app = "0.5"
+monotron-app = { path = "../../monotron-app" }

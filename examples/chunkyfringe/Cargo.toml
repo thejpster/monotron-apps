@@ -1,5 +1,5 @@
 [package]
-name = "oxidize2019"
+name = "chunky"
 version = "0.1.0"
 authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
 edition = "2018"
