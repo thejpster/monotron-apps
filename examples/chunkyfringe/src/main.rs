@@ -51,11 +51,7 @@ pub extern "C" fn monotron_main() -> i32 {
     // Clear screen to white on black
     writeln!(Host, "\u{001B}k\u{001B}W\u{001B}Z").unwrap();
 
-    writeln!(
-        Host,
-        " \u{001B}GP100\u{001B}W   MONOTRON   100     Sat 20 Jul  \u{001B}Y11:00:02\u{001B}W"
-    )
-    .unwrap();
+    top_line();
 
     // Paste in some colour
     writeln!(Host, " \u{001B}Y\u{001B}b").unwrap();
@@ -109,13 +105,37 @@ pub extern "C" fn monotron_main() -> i32 {
         "                      - \u{001B}M@therealjpster\u{001B}W"
     )
     .unwrap();
+    let mut count = 0;
     loop {
+        if count == 19 {
+            top_line();
+            count = 0;
+        } else {
+            count += 1;
+        }
         wfvbi();
         if kbhit() != 0 {
             break;
         }
     }
     0
+}
+
+fn top_line() {
+    // Top line
+    Host::move_cursor(Row(0), Col(0));
+    let time = Host::gettime();
+    writeln!(
+        Host,
+        " \u{001B}GP100\u{001B}W   MONOTRON   100     {:.3} {:02} {:.3}  \u{001B}Y{:02}:{:02}:{:02}\u{001B}W",
+        time.day_of_week().day_str(),
+        time.day,
+        time.month_str(),
+        time.hour,
+        time.minute,
+        time.second
+    )
+    .unwrap();
 }
 
 fn set_pixel(x: u8, y: u8) {

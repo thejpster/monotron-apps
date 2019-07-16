@@ -51,24 +51,6 @@ extern crate lazy_static;
 #[cfg(not(target_os = "none"))]
 mod sdl_window;
 
-#[repr(C)]
-/// The callbacks supplied by the Monotron OS.
-pub struct Table {
-    putchar: extern "C" fn(*const Context, u8) -> i32,
-    puts: extern "C" fn(*const Context, *const u8) -> i32,
-    readc: extern "C" fn(*const Context) -> i32,
-    wfvbi: extern "C" fn(*const Context),
-    kbhit: extern "C" fn(*const Context) -> i32,
-    move_cursor: extern "C" fn(*const Context, u8, u8),
-    play: extern "C" fn(*const Context, u32, u8, u8, u8) -> i32,
-    change_font: extern "C" fn(*const Context, u32, *const u8),
-    get_joystick: extern "C" fn(*const Context) -> u8,
-    set_cursor_visible: extern "C" fn(*mut Context, u8),
-    read_char_at: extern "C" fn(*mut Context, u8, u8) -> u16,
-    // TODO: Add a u32 timer API in milliseconds. Will wrap every 42 days,
-    // like Windows 95 did.
-}
-
 /// Represents the Monotron we're running on. Can be passed to `write!` and
 /// friends.
 pub struct Host;
@@ -332,82 +314,82 @@ impl core::convert::Into<Frequency> for Note {
             Note::F2 => 8731,
             Note::FsGb2 => 9250,
             Note::G2 => 9800,
-            Note::GsAb2 => 10383,
-            Note::A2 => 11000,
-            Note::AsBb2 => 11654,
-            Note::B2 => 12347,
-            Note::C3 => 13081,
-            Note::CsDb3 => 13859,
-            Note::D3 => 14683,
-            Note::DsEb3 => 15556,
-            Note::E3 => 16481,
-            Note::F3 => 17461,
-            Note::FsGb3 => 18500,
-            Note::G3 => 19600,
-            Note::GsAb3 => 20765,
-            Note::A3 => 22000,
-            Note::AsBb3 => 23308,
-            Note::B3 => 24694,
-            Note::C4 => 26163,
-            Note::CsDb4 => 27718,
-            Note::D4 => 29366,
-            Note::DsEb4 => 31113,
-            Note::E4 => 32963,
-            Note::F4 => 34923,
-            Note::FsGb4 => 36999,
-            Note::G4 => 39200,
-            Note::GsAb4 => 41530,
-            Note::A4 => 44000,
-            Note::AsBb4 => 46616,
-            Note::B4 => 49388,
-            Note::C5 => 52325,
-            Note::CsDb5 => 55437,
-            Note::D5 => 58733,
-            Note::DsEb5 => 62225,
-            Note::E5 => 65925,
-            Note::F5 => 69846,
-            Note::FsGb5 => 73999,
-            Note::G5 => 78399,
-            Note::GsAb5 => 83061,
-            Note::A5 => 88000,
-            Note::AsBb5 => 93233,
-            Note::B5 => 98777,
-            Note::C6 => 104650,
-            Note::CsDb6 => 110873,
-            Note::D6 => 117466,
-            Note::DsEb6 => 124451,
-            Note::E6 => 131851,
-            Note::F6 => 139691,
-            Note::FsGb6 => 147998,
-            Note::G6 => 156798,
-            Note::GsAb6 => 166122,
-            Note::A6 => 176000,
-            Note::AsBb6 => 186466,
-            Note::B6 => 197553,
-            Note::C7 => 209300,
-            Note::CsDb7 => 221746,
-            Note::D7 => 234932,
-            Note::DsEb7 => 248902,
-            Note::E7 => 263702,
-            Note::F7 => 279383,
-            Note::FsGb7 => 295996,
-            Note::G7 => 313596,
-            Note::GsAb7 => 332244,
-            Note::A7 => 352000,
-            Note::AsBb7 => 372931,
-            Note::B7 => 395107,
-            Note::C8 => 418601,
-            Note::CsDb8 => 443492,
-            Note::D8 => 469863,
-            Note::DsEb8 => 497803,
-            Note::E8 => 527404,
-            Note::F8 => 558765,
-            Note::FsGb8 => 591991,
-            Note::G8 => 627193,
-            Note::GsAb8 => 664488,
-            Note::A8 => 704000,
-            Note::AsBb8 => 745862,
-            Note::B8 => 790213,
+            Note::GsAb2 => 103_83,
+            Note::A2 => 110_00,
+            Note::AsBb2 => 116_54,
+            Note::B2 => 123_47,
+            Note::C3 => 130_81,
+            Note::CsDb3 => 138_59,
+            Note::D3 => 146_83,
+            Note::DsEb3 => 155_56,
+            Note::E3 => 164_81,
+            Note::F3 => 174_61,
+            Note::FsGb3 => 185_00,
+            Note::G3 => 196_00,
+            Note::GsAb3 => 207_65,
+            Note::A3 => 220_00,
+            Note::AsBb3 => 233_08,
+            Note::B3 => 246_94,
+            Note::C4 => 261_63,
+            Note::CsDb4 => 277_18,
+            Note::D4 => 293_66,
+            Note::DsEb4 => 311_13,
+            Note::E4 => 329_63,
+            Note::F4 => 349_23,
+            Note::FsGb4 => 369_99,
+            Note::G4 => 392_00,
+            Note::GsAb4 => 415_30,
+            Note::A4 => 440_00,
+            Note::AsBb4 => 466_16,
+            Note::B4 => 493_88,
+            Note::C5 => 523_25,
+            Note::CsDb5 => 554_37,
+            Note::D5 => 587_33,
+            Note::DsEb5 => 622_25,
+            Note::E5 => 659_25,
+            Note::F5 => 698_46,
+            Note::FsGb5 => 739_99,
+            Note::G5 => 783_99,
+            Note::GsAb5 => 830_61,
+            Note::A5 => 880_00,
+            Note::AsBb5 => 932_33,
+            Note::B5 => 987_77,
+            Note::C6 => 1046_50,
+            Note::CsDb6 => 1108_73,
+            Note::D6 => 1174_66,
+            Note::DsEb6 => 1244_51,
+            Note::E6 => 1318_51,
+            Note::F6 => 1396_91,
+            Note::FsGb6 => 1479_98,
+            Note::G6 => 1567_98,
+            Note::GsAb6 => 1661_22,
+            Note::A6 => 1760_00,
+            Note::AsBb6 => 1864_66,
+            Note::B6 => 1975_53,
+            Note::C7 => 2093_00,
+            Note::CsDb7 => 2217_46,
+            Note::D7 => 2349_32,
+            Note::DsEb7 => 2489_02,
+            Note::E7 => 2637_02,
+            Note::F7 => 2793_83,
+            Note::FsGb7 => 2959_96,
+            Note::G7 => 3135_96,
+            Note::GsAb7 => 3322_44,
+            Note::A7 => 3520_00,
+            Note::AsBb7 => 3729_31,
+            Note::B7 => 3951_07,
+            Note::C8 => 4186_01,
+            Note::CsDb8 => 4434_92,
+            Note::D8 => 4698_63,
+            Note::DsEb8 => 4978_03,
+            Note::E8 => 5274_04,
+            Note::F8 => 5587_65,
+            Note::FsGb8 => 5919_91,
+            Note::G8 => 6271_93,
+            Note::GsAb8 => 6644_88,
+            Note::A8 => 7040_00,
+            Note::AsBb8 => 7458_62,
+            Note::B8 => 7902_13,
         })
     }
 }
@@ -416,26 +398,24 @@ impl core::convert::Into<Frequency> for Note {
 /// Implementation used when building code for the Montron
 pub mod target {
     use super::*;
+    use monotron_api::Api;
 
     #[link_section = ".entry_point"]
     #[no_mangle]
     #[used]
     /// The pointer Monotron calls to start running this application.
-    pub static ENTRY_POINT: fn(*const Table, *mut Context) -> i32 = entry_point;
+    pub static ENTRY_POINT: fn(*const Api) -> i32 = entry_point;
     /// Pointer to the callback table we're given by the host.
-    static mut TABLE_POINTER: Option<&'static Table> = None;
-    /// Pointer to the context we're given by the host.
-    static mut TABLE_CONTEXT: Option<&'static mut Context> = None;
+    static mut TABLE_POINTER: Option<&'static Api> = None;
 
     #[no_mangle]
     /// The function called by the host to start us up. Does some setup, then
     /// jumps to a function called `main` defined by the actual application using
     /// this crate.
-    pub fn entry_point(table: *const Table, ctx: *mut Context) -> i32 {
+    pub fn entry_point(table: *const Api) -> i32 {
         // Turn the pointer into a reference and store in a static.
         unsafe {
             TABLE_POINTER = Some(&*table);
-            TABLE_CONTEXT = Some(&mut *ctx);
         };
 
         extern "C" {
@@ -445,23 +425,21 @@ pub mod target {
         unsafe { monotron_main() }
     }
 
-    impl Table {
-        fn get() -> (&'static Table, &'static mut Context) {
-            unsafe {
-                if let (Some(tbl), Some(ctx)) = (&TABLE_POINTER, &mut TABLE_CONTEXT) {
-                    (tbl, ctx)
-                } else {
-                    panic!("Bad context");
-                }
+    fn get_api() -> &'static Api {
+        unsafe {
+            if let Some(tbl) = &TABLE_POINTER {
+                (tbl)
+            } else {
+                panic!("Bad context");
             }
         }
     }
 
     impl core::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> core::fmt::Result {
-            let (tbl, ctx) = Table::get();
+            let tbl = get_api();
             for ch in s.bytes() {
-                (tbl.putchar)(ctx, ch);
+                (tbl.putchar)(ch);
             }
             Ok(())
         }
@@ -475,40 +453,40 @@ pub mod target {
 
         /// Send a single 8-bit character to the screen.
         pub fn putchar(ch: u8) {
-            let (tbl, ctx) = Table::get();
-            (tbl.putchar)(ctx, ch);
+            let tbl = get_api();
+            (tbl.putchar)(ch);
         }
 
         /// Send a single 8-bit character to the screen.
         pub fn puts(str8bit: &[u8]) {
-            let (tbl, ctx) = Table::get();
+            let tbl = get_api();
             for &ch in str8bit {
-                (tbl.putchar)(ctx, ch);
+                (tbl.putchar)(ch);
             }
         }
 
         /// Return true if there is a keypress waiting (i.e. `readc` won't block).
         pub fn kbhit() -> bool {
-            let (tbl, ctx) = Table::get();
-            (tbl.kbhit)(ctx) != 0
+            let tbl = get_api();
+            (tbl.kbhit)() != 0
         }
 
         /// Read an 8-bit character from the console.
         pub fn readc() -> u8 {
-            let (tbl, ctx) = Table::get();
-            (tbl.readc)(ctx) as u8
+            let tbl = get_api();
+            (tbl.readc)() as u8
         }
 
         /// Wait For Vertical Blanking Interval
         pub fn wfvbi() {
-            let (tbl, ctx) = Table::get();
-            (tbl.wfvbi)(ctx)
+            let tbl = get_api();
+            (tbl.wfvbi)()
         }
 
         /// Move the cursor on the screen.
         pub fn move_cursor(row: Row, col: Col) {
-            let (tbl, ctx) = Table::get();
-            (tbl.move_cursor)(ctx, row.0, col.0);
+            let tbl = get_api();
+            (tbl.move_cursor)(row.0, col.0);
         }
 
         /// Read back what's on the screen.
@@ -516,8 +494,8 @@ pub mod target {
         /// Returns the 8-bit glyph in the given cell, and the attribute for
         /// that cell.
         pub fn read_char_at(row: Row, col: Col) -> (u8, u8) {
-            let (tbl, ctx) = Table::get();
-            let word = (tbl.read_char_at)(ctx, row.0, col.0);
+            let tbl = get_api();
+            let word = (tbl.read_char_at)(row.0, col.0);
             ((word >> 8) as u8, word as u8)
         }
 
@@ -526,9 +504,8 @@ pub mod target {
         where
             F: Into<Frequency>,
         {
-            let (tbl, ctx) = Table::get();
+            let tbl = get_api();
             (tbl.play)(
-                ctx,
                 frequency.into().as_centi_hz(),
                 channel as u8,
                 waveform as u8,
@@ -538,15 +515,15 @@ pub mod target {
 
         /// Move the cursor on the screen.
         pub fn set_font(font: Font) -> Result<(), &'static str> {
-            let (tbl, ctx) = Table::get();
+            let tbl = get_api();
             match font {
-                Font::Normal => (tbl.change_font)(ctx, 0, core::ptr::null()),
-                Font::Teletext => (tbl.change_font)(ctx, 1, core::ptr::null()),
+                Font::Normal => (tbl.change_font)(0, core::ptr::null()),
+                Font::Teletext => (tbl.change_font)(1, core::ptr::null()),
                 Font::Custom(ram) => {
                     if ram.len() != 4096 {
                         return Err("bad font length");
                     }
-                    (tbl.change_font)(ctx, 2, ram.as_ptr());
+                    (tbl.change_font)(2, ram.as_ptr());
                 }
             }
             Ok(())
@@ -554,15 +531,36 @@ pub mod target {
 
         /// Get the Joystick state
         pub fn get_joystick() -> JoystickState {
-            let (tbl, ctx) = Table::get();
-            let b = (tbl.get_joystick)(ctx);
+            let tbl = get_api();
+            let b = (tbl.get_joystick)();
             JoystickState(b)
         }
 
         /// Show/hide the cursor
         pub fn set_cursor_visible(visible: bool) {
-            let (tbl, ctx) = Table::get();
-            (tbl.set_cursor_visible)(ctx, if visible { 1 } else { 0 });
+            let tbl = get_api();
+            (tbl.set_cursor_visible)(if visible { 1 } else { 0 });
+        }
+
+        /// Get the current calendar time. This system does not understand
+        /// time zones, or leap seconds.
+        pub fn gettime() -> monotron_api::Timestamp {
+            monotron_api::Timestamp {
+                /// The Gregorian calendar year, minus 1970 (so 10 is 1980, and 30 is the year 2000)
+                year_from_1970: 49,
+                /// The month of the year, where January is 1 and December is 12
+                month: 7,
+                /// The day of the month where 1 is the first of the month, through to 28,
+                /// 29, 30 or 31 (as appropriate)
+                day: 16,
+                /// The hour in the day, from 0 to 23
+                hour: 20,
+                /// The minutes past the hour, from 0 to 59
+                minute: 44,
+                /// The seconds past the minute, from 0 to 59. Note that some filesystems
+                /// only have 2-second precision on their timestamps.
+                second: 38,
+            }
         }
     }
 
@@ -628,9 +626,7 @@ pub mod target {
         /// Call once at start-up to configure terminal
         pub fn init() {
             // Create SDL2 canvas and window
-            // Create framebuffer to render onto canvas
-            let ctx = sdl_window::Context::new();
-            *VIDEO_CONTEXT.lock().unwrap() = Some(ctx);
+            *VIDEO_CONTEXT.lock().unwrap() = Some(sdl_window::Context::new());
         }
 
         /// Disable ncurses
@@ -761,6 +757,29 @@ pub mod target {
         pub fn set_cursor_visible(visible: bool) {
             if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
                 ctx.fb.set_cursor_visible(visible);
+            }
+        }
+
+        /// Get the current calendar time. This system does not understand
+        /// time zones, or leap seconds.
+        pub fn gettime() -> monotron_api::Timestamp {
+            use chrono::prelude::*;
+            let local: DateTime<Local> = Local::now();
+            monotron_api::Timestamp {
+                /// The Gregorian calendar year, minus 1970 (so 10 is 1980, and 30 is the year 2000)
+                year_from_1970: (local.year() - 1970) as u8,
+                /// The month of the year, where January is 1 and December is 12
+                month: local.month() as u8,
+                /// The day of the month where 1 is the first of the month, through to 28,
+                /// 29, 30 or 31 (as appropriate)
+                day: local.day() as u8,
+                /// The hour in the day, from 0 to 23
+                hour: local.hour() as u8,
+                /// The minutes past the hour, from 0 to 59
+                minute: local.minute() as u8,
+                /// The seconds past the minute, from 0 to 59. Note that some filesystems
+                /// only have 2-second precision on their timestamps.
+                second: local.second() as u8,
             }
         }
     }
@@ -908,6 +927,12 @@ pub extern "C" fn put_separated_sixel(_char: u8) {}
 /// C FFI for Host::set_cursor_visible
 pub extern "C" fn set_cursor_visible(visible: bool) {
     Host::set_cursor_visible(visible)
+}
+
+#[no_mangle]
+/// C FFI for Host::gettime
+pub extern "C" fn gettime() -> monotron_api::Timestamp {
+    Host::gettime()
 }
 
 #[no_mangle]
