@@ -48,77 +48,159 @@ pub extern "C" fn monotron_main() -> i32 {
     Host::set_cursor_visible(false);
     Host::set_font(Font::Teletext).unwrap();
 
-    // Clear screen to white on black
-    writeln!(Host, "\u{001B}k\u{001B}W\u{001B}Z").unwrap();
+    let uart = match Host::open(
+        "/dev/uart0@9600",
+        monotron_openmode_readwrite(true, false, true, false, false),
+    ) {
+        HandleResult::Ok(n) => n,
+        HandleResult::Error(_) => return -1,
+    };
 
-    top_line();
-
-    // Paste in some colour
-    writeln!(Host, " \u{001B}Y\u{001B}b").unwrap();
-    for _ in 0..(48 * 5) {
-        write!(Host, " ").unwrap();
+    Host::write(uart, b"\r\nATE0\r\n");
+    for _ in 0..60 {
+        Host::wfvbi();
+        flush(uart);
     }
-    write!(ChunkyTextWriter { x: 0, y: 11 }, "Chunky Fringe").unwrap();
 
-    Host::move_cursor(Row(9), Col(0));
-    write!(Host, "\u{001B}k\u{001B}G").unwrap();
-    writeln!(Host, "\u{001B}^ This is Monotron.").unwrap();
-    writeln!(Host, "\u{001B}v This is Monotron.").unwrap();
-    writeln!(Host, "\u{001B}k\u{001B}W").unwrap();
-    writeln!(Host, " It has an ARM CPU and 32K of RAM.").unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host, " The ROM is written in @rustlang and the pixels").unwrap();
-    writeln!(Host, " are generated in software!").unwrap();
-    writeln!(Host).unwrap();
-    write!(Host, "\u{001B}k\u{001B}G").unwrap();
-    writeln!(
-        Host,
-        "\u{001B}^ Here are the latest tweets from \u{005F}retrochunky:"
-    )
-    .unwrap();
-    writeln!(
-        Host,
-        "\u{001B}v Here are the latest tweets from \u{005F}retrochunky:"
-    )
-    .unwrap();
-    writeln!(Host, "\u{001B}k\u{001B}W").unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host, " \u{001B}G*\u{001B}W What on earth is this thing?").unwrap();
-    writeln!(
-        Host,
-        "                      - \u{001B}M@therealjpster\u{001B}W"
-    )
-    .unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host, " \u{001B}G*\u{001B}W What on earth is this thing?").unwrap();
-    writeln!(
-        Host,
-        "                      - \u{001B}M@therealjpster\u{001B}W"
-    )
-    .unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host).unwrap();
-    writeln!(Host, " \u{001B}G*\u{001B}W What on earth is this thing?").unwrap();
-    writeln!(
-        Host,
-        "                      - \u{001B}M@therealjpster\u{001B}W"
-    )
-    .unwrap();
-    let mut count = 0;
-    loop {
-        if count == 19 {
-            top_line();
-            count = 0;
+    'outer: loop {
+        // Clear screen to white on black
+        writeln!(Host, "\u{001B}k\u{001B}W\u{001B}Z").unwrap();
+
+        top_line();
+
+        Host::write(uart, b"AT\r\n");
+        if wait_for(uart, "OK", 1) {
+            writeln!(Host, "Modem found...").unwrap();
         } else {
-            count += 1;
+            writeln!(Host, "Modem not found...").unwrap();
         }
-        wfvbi();
-        if kbhit() != 0 {
-            break;
+
+        // Paste in some colour
+        writeln!(Host, " \u{001B}Y\u{001B}b").unwrap();
+        for _ in 0..(48 * 6) {
+            write!(Host, " ").unwrap();
+        }
+        write!(ChunkyTextWriter { x: 0, y: 11 }, "Chunky Fringe").unwrap();
+
+        Host::move_cursor(Row(9), Col(0));
+        write!(Host, "\u{001B}k\u{001B}G").unwrap();
+        writeln!(Host, "\u{001B}^ This is Monotron.").unwrap();
+        writeln!(Host, "\u{001B}v This is Monotron.").unwrap();
+        writeln!(Host, "\u{001B}k\u{001B}W").unwrap();
+        writeln!(Host, " It has an ARM CPU and 32K of RAM.").unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host, " The ROM is written in @rustlang and the pixels").unwrap();
+        writeln!(Host, " are generated in software!").unwrap();
+        writeln!(Host).unwrap();
+        write!(Host, "\u{001B}k\u{001B}G").unwrap();
+        writeln!(
+            Host,
+            "\u{001B}^ Here are the latest tweets from \u{005F}retrochunky:"
+        )
+        .unwrap();
+        writeln!(
+            Host,
+            "\u{001B}v Here are the latest tweets from \u{005F}retrochunky:"
+        )
+        .unwrap();
+
+        Host::write(uart, b"AT+CIPSTART=\"TCP\",\"www.thejpster.org.uk\",80\r\n");
+
+        if wait_for(uart, "OK", 10) {
+            let req = "GET /_secret.php HTTP/1.1\r\nConnection: close\r\nHost: www.thejpster.org.uk\r\n\r\n";
+            let mut cmd: heapless::String<heapless::consts::U24> = heapless::String::new();
+            write!(cmd, "AT+CIPSEND={}\r\n", req.len()).unwrap();
+            Host::write(uart, cmd.as_bytes());
+            Host::write(uart, req.as_bytes());
+
+            if wait_for(uart, "SEND OK", 5) {
+                writeln!(Host, "Fetching tweets...").unwrap();
+            } else {
+                writeln!(Host, "Error fetching tweets.").unwrap();
+            }
+
+        // writeln!(Host, "\u{001B}k\u{001B}W").unwrap();
+        // writeln!(Host).unwrap();
+        // writeln!(Host, " \u{001B}G*\u{001B}W What on earth is this thing?").unwrap();
+        // writeln!(
+        //     Host,
+        //     "                      - \u{001B}M@therealjpster\u{001B}W"
+        // )
+        // .unwrap();
+        } else {
+            writeln!(Host, "Bad response from modem.").unwrap();
+        }
+
+        let mut count = 0;
+        'inner: loop {
+            if count == 19 {
+                top_line();
+                count = 0;
+            } else {
+                count += 1;
+            }
+            wfvbi();
+            if kbhit() != 0 {
+                let ch = Host::readc();
+                if ch == b'q' {
+                    break 'outer;
+                } else {
+                    break 'inner;
+                }
+            }
         }
     }
     0
+}
+
+fn flush(handle: Handle) {
+    let mut buf = [0u8; 32];
+    Host::read(handle, &mut buf);
+}
+
+fn wait_for(handle: Handle, message: &str, seconds: u32) -> bool {
+    let mut count = 0;
+    let mut buf: heapless::Vec<u8, heapless::consts::U128> = heapless::Vec::new();
+    while count < seconds * 60 {
+        let mut temp_buffer = [0u8; 16];
+        match Host::read(handle, &mut temp_buffer) {
+            SizeResult::Ok(0) => {
+                count += 1;
+                Host::wfvbi();
+            }
+            SizeResult::Ok(n) => {
+                for &b in temp_buffer[0..n].iter() {
+                    if b == b'\r' {
+                        // Drop it
+                    } else if b == b'\n' {
+                        write!(Host, "\n").unwrap();
+                        if buf.len() >= 2 && &buf[0..2] == b"AT" {
+                            buf.clear();
+                            count = 0;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        buf.push(b);
+                        write!(Host, "{}", b as char).unwrap();
+                    }
+                }
+            }
+            SizeResult::Error(_) => {
+                writeln!(Host, "Error reading.").unwrap();
+                break;
+            }
+        }
+    }
+    if &buf == message.as_bytes() {
+        true
+    } else {
+        writeln!(Host, "Got {:?}", unsafe {
+            core::str::from_utf8_unchecked(&buf)
+        })
+        .unwrap();
+        false
+    }
 }
 
 fn top_line() {
@@ -129,11 +211,11 @@ fn top_line() {
         Host,
         " \u{001B}GP100\u{001B}W   MONOTRON   100     {:.3} {:02} {:.3}  \u{001B}Y{:02}:{:02}:{:02}\u{001B}W",
         time.day_of_week().day_str(),
-        time.day,
+        time.days,
         time.month_str(),
-        time.hour,
-        time.minute,
-        time.second
+        time.hours,
+        time.minutes,
+        time.seconds
     )
     .unwrap();
 }
