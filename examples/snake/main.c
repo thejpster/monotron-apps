@@ -180,7 +180,7 @@ static void wait_frame(void);
 static void wait_note(void);
 static void update_sound(void);
 static char get_input(void);
-static void game(void);
+static bool game(void);
 
 static void pigfx_bgcol(unsigned int color) {
     const char colours[] = "wrgbcmyk";
@@ -356,7 +356,6 @@ static void initialize(void) {
     score = 0;
 
     pigfx_cls();
-    pigfx_hide_cursor();
 
     pigfx_bgcol(FIELD_COLOR);
     // Top
@@ -621,9 +620,10 @@ static void game_over(void) {
     }
 }
 
-static void game(void) {
-    int  head_idx;
+static bool game(void) {
+    int head_idx;
     start_music();
+    pigfx_hide_cursor();
     splash_screen();
 
     // Don't immediately exit the splash screen because the button is still held.
@@ -631,7 +631,13 @@ static void game(void) {
         wait_frame();
     }
 
-    for (char c = get_input(); (c != 'p') && (c != 'P'); c = get_input()) {
+    for (char c = get_input(); ; c = get_input()) {
+        if ((c == 'p') || (c == 'P')) {
+            break;
+        }
+        if ((c == 'q') || (c == 'Q')) {
+            return false;
+        }
         wait_frame();
         rnd_x++;
     }
@@ -647,7 +653,7 @@ static void game(void) {
     while (1) {
         if (update_snake() == 0) {
             game_over();
-            return;
+            return true;
         }
 
         head_idx = snake_head.i * FIELD_W + snake_head.j;
@@ -725,7 +731,8 @@ int main(int argc, const char** argv) {
 #endif
 
 int monotron_main(void) {
-    while (1) {
-        game();
+    while (game()) {
+        // Carry on
     }
+    return 0;
 }
