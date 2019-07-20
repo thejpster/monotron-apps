@@ -15,8 +15,9 @@ crate-type = ["staticlib", "rlib"]
 [features]
 print-panic = []
 
-[dependencies]
-monotron-api = "0.1.0"
+[dependencies.monotron-api]
+version = "0.2.0"
+# path = "../../monotron/monotron-api"
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
 sdl2 = "0.32"

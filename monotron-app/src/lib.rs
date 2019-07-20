@@ -51,6 +51,8 @@ extern crate lazy_static;
 #[cfg(not(target_os = "none"))]
 mod sdl_window;
 
+pub use monotron_api::*;
+
 /// Represents the Monotron we're running on. Can be passed to `write!` and
 /// friends.
 pub struct Host;
@@ -437,10 +439,7 @@ pub mod target {
 
     impl core::fmt::Write for Host {
         fn write_str(&mut self, s: &str) -> core::fmt::Result {
-            let tbl = get_api();
-            for ch in s.bytes() {
-                (tbl.putchar)(ch);
-            }
+            Host::puts_utf8(s);
             Ok(())
         }
     }
@@ -545,22 +544,45 @@ pub mod target {
         /// Get the current calendar time. This system does not understand
         /// time zones, or leap seconds.
         pub fn gettime() -> monotron_api::Timestamp {
-            monotron_api::Timestamp {
-                /// The Gregorian calendar year, minus 1970 (so 10 is 1980, and 30 is the year 2000)
-                year_from_1970: 49,
-                /// The month of the year, where January is 1 and December is 12
-                month: 7,
-                /// The day of the month where 1 is the first of the month, through to 28,
-                /// 29, 30 or 31 (as appropriate)
-                day: 16,
-                /// The hour in the day, from 0 to 23
-                hour: 20,
-                /// The minutes past the hour, from 0 to 59
-                minute: 44,
-                /// The seconds past the minute, from 0 to 59. Note that some filesystems
-                /// only have 2-second precision on their timestamps.
-                second: 38,
-            }
+            let tbl = get_api();
+            (tbl.gettime)()
+        }
+
+        /// Print a UTF-8 string
+        pub fn puts_utf8(string: &str) {
+            let tbl = get_api();
+            (tbl.puts_utf8)(string.as_ptr(), string.len());
+        }
+
+        /// Open/create a device/file. Returns a file handle, or an error.
+        pub fn open(filename: &str, mode: OpenMode) -> HandleResult {
+            let tbl = get_api();
+            let borrowed_name = BorrowedString {
+                ptr: filename.as_ptr(),
+                length: filename.len(),
+            };
+            (tbl.open)(borrowed_name, mode)
+        }
+
+        /// Close a previously opened handle.
+        pub fn close(handle: Handle) -> EmptyResult {
+            let tbl = get_api();
+            (tbl.close)(handle)
+        }
+
+        /// Read from a file handle into the given buffer. Returns an error, or
+        /// the number of bytes read (which may be less than `buffer_len`).
+        pub fn read(handle: Handle, buffer: &mut [u8]) -> SizeResult {
+            let tbl = get_api();
+            (tbl.read)(handle, buffer.as_mut_ptr(), buffer.len())
+        }
+
+        /// Write the contents of the given buffer to a file handle. Returns an
+        /// error, or the number of bytes written (which may be less than
+        /// `buffer_len`).
+        pub fn write(handle: Handle, buffer: &[u8]) -> SizeResult {
+            let tbl = get_api();
+            (tbl.write)(handle, buffer.as_ptr(), buffer.len())
         }
     }
 
@@ -772,15 +794,46 @@ pub mod target {
                 month: local.month() as u8,
                 /// The day of the month where 1 is the first of the month, through to 28,
                 /// 29, 30 or 31 (as appropriate)
-                day: local.day() as u8,
+                days: local.day() as u8,
                 /// The hour in the day, from 0 to 23
-                hour: local.hour() as u8,
+                hours: local.hour() as u8,
                 /// The minutes past the hour, from 0 to 59
-                minute: local.minute() as u8,
+                minutes: local.minute() as u8,
                 /// The seconds past the minute, from 0 to 59. Note that some filesystems
                 /// only have 2-second precision on their timestamps.
-                second: local.second() as u8,
+                seconds: local.second() as u8,
             }
+        }
+
+        /// Print a UTF-8 string
+        pub fn puts_utf8(string: &str) {
+            use std::fmt::Write;
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.fb.write_str(string).unwrap();
+            }
+        }
+
+        /// Open/create a device/file. Returns a file handle, or an error.
+        pub fn open(_filename: &str, _mode: OpenMode) -> HandleResult {
+            unimplemented!();
+        }
+
+        /// Close a previously opened handle.
+        pub fn close(_handle: Handle) -> EmptyResult {
+            unimplemented!();
+        }
+
+        /// Read from a file handle into the given buffer. Returns an error, or
+        /// the number of bytes read (which may be less than `buffer_len`).
+        pub fn read(_handle: Handle, _buffer: &mut [u8]) -> SizeResult {
+            unimplemented!();
+        }
+
+        /// Write the contents of the given buffer to a file handle. Returns an
+        /// error, or the number of bytes written (which may be less than
+        /// `buffer_len`).
+        pub fn write(_handle: Handle, _buffer: &[u8]) -> SizeResult {
+            unimplemented!();
         }
     }
 }
@@ -840,7 +893,6 @@ pub extern "C" fn getchar() -> u8 {
 #[no_mangle]
 /// C FFI for Host::wfvbi
 pub extern "C" fn wfvbi() {
-    #[cfg(not(target_os = "none"))]
     Host::wfvbi()
 }
 
@@ -919,9 +971,29 @@ pub extern "C" fn joystick_fire_pressed(state: u8) -> bool {
     (state & 0b00001) != 0
 }
 
+/// Write a connected sixel to the screen. Assumes you have the Teletext font selected.
+///
+/// `sixel` is the numeric value of the sixel to write (0..63)
 #[no_mangle]
-/// Ugh
-pub extern "C" fn put_separated_sixel(_char: u8) {}
+pub extern "C" fn put_connected_sixel(sixel: u8) {
+    if sixel < 0x20 {
+        putchar(sixel + 0x80)
+    } else if sixel < 0x40 {
+        putchar(sixel + 0xC0 - 0x20)
+    }
+}
+
+/// Write a separated sixel to the screen. Assumes you have the Teletext font selected.
+///
+/// `sixel` is the numeric value of the sixel to write (0..63)
+#[no_mangle]
+pub extern "C" fn put_separated_sixel(sixel: u8) {
+    if sixel < 0x20 {
+        putchar(sixel + 0xA0)
+    } else if sixel < 0x40 {
+        putchar(sixel + 0xE0 - 0x20)
+    }
+}
 
 #[no_mangle]
 /// C FFI for Host::set_cursor_visible
