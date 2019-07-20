@@ -75,12 +75,11 @@ pub extern "C" fn monotron_main() -> i32 {
         writeln!(Host, " of its time drawing the screen, so it's").unwrap();
         writeln!(Host, " about the speed of a BBC Micro.").unwrap();
         writeln!(Host).unwrap();
-        writeln!(Host, " It can display 48 columns by 36 rows in").unwrap();
-        writeln!(Host, " 8 colours.").unwrap();
+        writeln!(Host, " It can display 48 columns by 36 rows in 8").unwrap();
+        writeln!(Host, " colours.").unwrap();
         writeln!(Host).unwrap();
-        writeln!(Host).unwrap();
-        writeln!(Host).unwrap();
-        writeln!(Host).unwrap();
+        writeln!(Host, "\u{001B}M I wrote it to show what you can do in Rust").unwrap();
+        writeln!(Host, " with very few hardware resources.").unwrap();
         writeln!(Host).unwrap();
         writeln!(Host).unwrap();
         writeln!(Host).unwrap();
@@ -95,12 +94,17 @@ pub extern "C" fn monotron_main() -> i32 {
         .unwrap();
         write!(
             Host,
-            "\u{001B}^    See github.com/thejpster/monotron for more  "
+            "\u{001B}^   See github.com/thejpster/monotron for more   "
         )
         .unwrap();
         write!(
             Host,
-            "\u{001B}v    See github.com/thejpster/monotron for more  "
+            "\u{001B}v   See github.com/thejpster/monotron for more   "
+        )
+        .unwrap();
+        write!(
+            Host,
+            "\u{001B}^                                                "
         )
         .unwrap();
 
