@@ -48,32 +48,11 @@ pub extern "C" fn monotron_main() -> i32 {
     Host::set_cursor_visible(false);
     Host::set_font(Font::Teletext).unwrap();
 
-    let uart = match Host::open(
-        "/dev/uart0@9600",
-        monotron_openmode_readwrite(true, false, true, false, false),
-    ) {
-        HandleResult::Ok(n) => n,
-        HandleResult::Error(_) => return -1,
-    };
-
-    Host::write(uart, b"\r\nATE0\r\n");
-    for _ in 0..60 {
-        Host::wfvbi();
-        flush(uart);
-    }
-
     'outer: loop {
         // Clear screen to white on black
         writeln!(Host, "\u{001B}k\u{001B}W\u{001B}Z").unwrap();
 
         top_line();
-
-        Host::write(uart, b"AT\r\n");
-        if wait_for(uart, "OK", 1) {
-            writeln!(Host, "Modem found...").unwrap();
-        } else {
-            writeln!(Host, "Modem not found...").unwrap();
-        }
 
         // Paste in some colour
         writeln!(Host, " \u{001B}Y\u{001B}b").unwrap();
@@ -92,44 +71,38 @@ pub extern "C" fn monotron_main() -> i32 {
         writeln!(Host, " The ROM is written in @rustlang and the pixels").unwrap();
         writeln!(Host, " are generated in software!").unwrap();
         writeln!(Host).unwrap();
-        write!(Host, "\u{001B}k\u{001B}G").unwrap();
-        writeln!(
+        writeln!(Host, " The CPU runs at 80 MHz, but it spends most").unwrap();
+        writeln!(Host, " of its time drawing the screen, so it's").unwrap();
+        writeln!(Host, " about the speed of a BBC Micro.").unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host, " It can display 48 columns by 36 rows in").unwrap();
+        writeln!(Host, " 8 colours.").unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        writeln!(Host).unwrap();
+        write!(Host, "\u{001B}Y\u{001B}r").unwrap();
+        write!(
             Host,
-            "\u{001B}^ Here are the latest tweets from \u{005F}retrochunky:"
+            "\u{001B}^                                                "
         )
         .unwrap();
-        writeln!(
+        write!(
             Host,
-            "\u{001B}v Here are the latest tweets from \u{005F}retrochunky:"
+            "\u{001B}^    See github.com/thejpster/monotron for more  "
         )
         .unwrap();
-
-        Host::write(uart, b"AT+CIPSTART=\"TCP\",\"www.thejpster.org.uk\",80\r\n");
-
-        if wait_for(uart, "OK", 10) {
-            let req = "GET /_secret.php HTTP/1.1\r\nConnection: close\r\nHost: www.thejpster.org.uk\r\n\r\n";
-            let mut cmd: heapless::String<heapless::consts::U24> = heapless::String::new();
-            write!(cmd, "AT+CIPSEND={}\r\n", req.len()).unwrap();
-            Host::write(uart, cmd.as_bytes());
-            Host::write(uart, req.as_bytes());
-
-            if wait_for(uart, "SEND OK", 5) {
-                writeln!(Host, "Fetching tweets...").unwrap();
-            } else {
-                writeln!(Host, "Error fetching tweets.").unwrap();
-            }
-
-        // writeln!(Host, "\u{001B}k\u{001B}W").unwrap();
-        // writeln!(Host).unwrap();
-        // writeln!(Host, " \u{001B}G*\u{001B}W What on earth is this thing?").unwrap();
-        // writeln!(
-        //     Host,
-        //     "                      - \u{001B}M@therealjpster\u{001B}W"
-        // )
-        // .unwrap();
-        } else {
-            writeln!(Host, "Bad response from modem.").unwrap();
-        }
+        write!(
+            Host,
+            "\u{001B}v    See github.com/thejpster/monotron for more  "
+        )
+        .unwrap();
 
         let mut count = 0;
         'inner: loop {
@@ -158,58 +131,13 @@ fn flush(handle: Handle) {
     Host::read(handle, &mut buf);
 }
 
-fn wait_for(handle: Handle, message: &str, seconds: u32) -> bool {
-    let mut count = 0;
-    let mut buf: heapless::Vec<u8, heapless::consts::U128> = heapless::Vec::new();
-    while count < seconds * 60 {
-        let mut temp_buffer = [0u8; 16];
-        match Host::read(handle, &mut temp_buffer) {
-            SizeResult::Ok(0) => {
-                count += 1;
-                Host::wfvbi();
-            }
-            SizeResult::Ok(n) => {
-                for &b in temp_buffer[0..n].iter() {
-                    if b == b'\r' {
-                        // Drop it
-                    } else if b == b'\n' {
-                        write!(Host, "\n").unwrap();
-                        if buf.len() >= 2 && &buf[0..2] == b"AT" {
-                            buf.clear();
-                            count = 0;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        buf.push(b);
-                        write!(Host, "{}", b as char).unwrap();
-                    }
-                }
-            }
-            SizeResult::Error(_) => {
-                writeln!(Host, "Error reading.").unwrap();
-                break;
-            }
-        }
-    }
-    if &buf == message.as_bytes() {
-        true
-    } else {
-        writeln!(Host, "Got {:?}", unsafe {
-            core::str::from_utf8_unchecked(&buf)
-        })
-        .unwrap();
-        false
-    }
-}
-
 fn top_line() {
     // Top line
     Host::move_cursor(Row(0), Col(0));
     let time = Host::gettime();
     writeln!(
         Host,
-        " \u{001B}GP100\u{001B}W   MONOTRON   100     {:.3} {:02} {:.3}  \u{001B}Y{:02}:{:02}:{:02}\u{001B}W",
+        " \u{001B}k\u{001B}GP100\u{001B}W   MONOTRON   100     {:.3} {:02} {:.3}  \u{001B}Y{:02}:{:02}:{:02}\u{001B}W",
         time.day_of_week().day_str(),
         time.days,
         time.month_str(),

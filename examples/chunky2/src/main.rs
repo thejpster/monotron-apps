@@ -105,6 +105,7 @@ pub extern "C" fn monotron_main() -> i32 {
                 }
                 b'e' | b'E' => {
                     edit_string(&mut buf);
+                    Host::puts(b"\x1BW\x1Bk\x1BZ");
                     msg_start = 47;
                 }
                 _ => {
@@ -121,7 +122,7 @@ where
 {
     Host::set_cursor_visible(true);
     loop {
-        Host::puts(b"\x1BW\x1BB\x1BZ");
+        Host::puts(b"\x1BW\x1Bb\x1BZ");
         write!(Host, "{}", buf).unwrap();
         while !Host::kbhit() {
             Host::wfvbi();
