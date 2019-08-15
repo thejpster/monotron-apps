@@ -498,6 +498,12 @@ pub mod target {
             ((word >> 8) as u8, word as u8)
         }
 
+        /// Re-map visible scanlines
+        pub fn map_line(actual_scanline: u16, drawn_scanline: u16) {
+            let tbl = get_api();
+            (tbl.map_line)(actual_scanline, drawn_scanline);
+        }
+
         /// Start playing a tone. It will continue.
         pub fn play<F>(frequency: F, channel: Channel, waveform: Waveform, volume: u8)
         where
@@ -741,6 +747,13 @@ pub mod target {
                 }
             } else {
                 (0, 0)
+            }
+        }
+
+        /// Re-map visible scanlines
+        pub fn map_line(actual_scanline: u16, drawn_scanline: u16) {
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                ctx.fb.map_line(actual_scanline, drawn_scanline);
             }
         }
 
@@ -1012,6 +1025,12 @@ pub extern "C" fn gettime() -> monotron_api::Timestamp {
 pub extern "C" fn read_char_at(row: u8, col: u8) -> u16 {
     let (glyph, attr) = Host::read_char_at(Row(row), Col(col));
     ((glyph as u16) << 8) + (attr as u16)
+}
+
+#[no_mangle]
+/// C FFI for Host::map_line
+pub extern "C" fn map_line(actual_scanline: u16, drawn_scanline: u16) {
+    Host::map_line(actual_scanline, drawn_scanline);
 }
 
 #[no_mangle]

@@ -291,6 +291,18 @@ int kbhit(void);
 void move_cursor(unsigned char row, unsigned char col);
 
 /**
+ * Read a character, and the attribute, at a given location on the screen.
+ */
+uint16_t read_char_at(uint8_t row, uint8_t col);
+
+/**
+ * On the scan-line X, actually draw the pixels for scan-line Y.
+ *
+ * Both values should be < 576.
+ */
+void map_line(uint16_t x, uint16_t y);
+
+/**
  * Configure one channel of the synthesiser to continuously play a note.
  *
  * @param frequency the frequency of the note to play (in centi-hertz)
