@@ -18,7 +18,7 @@ RUST_LIB = $(CRATE_DIR)/Cargo.toml
 LINKER_SCRIPT = $(CRATE_DIR)/monotron-app.ld
 HEADER_FILE = $(CRATE_DIR)/monotron.h
 
-all: directories $(OUT_DIR)/app.bin $(OUT_DIR)/linux
+all: directories $(OUT_DIR)/$(NAME).bin $(OUT_DIR)/$(NAME)-linux
 
 clean:
 	-test -f Cargo.toml && cargo clean || true
@@ -26,7 +26,7 @@ clean:
 
 rebuild: clean all
 
-$(OUT_DIR)/linux $(OUT_DIR)/app: Makefile $(LINKER_SCRIPT) $(HEADER_FILE)
+$(OUT_DIR)/$(NAME)-linux $(OUT_DIR)/$(NAME).elf: Makefile $(LINKER_SCRIPT) $(HEADER_FILE)
 
 ifdef SOURCES
 
@@ -39,15 +39,15 @@ $(CRATE_DIR)/target/thumbv7em-none-eabi/release/libmonotron_app.a:
 $(CRATE_DIR)/target/release/libmonotron_app.a:
 	cargo build --release --manifest-path=$(RUST_LIB)
 
-$(OUT_DIR)/app: $(ARM_SOURCE)
-	$(ARM_CC) -T $(LINKER_SCRIPT) -o $(OUT_DIR)/app $(ARM_SOURCE) $(ARM_CFLAGS)
+$(OUT_DIR)/$(NAME).elf: $(ARM_SOURCE)
+	$(ARM_CC) -T $(LINKER_SCRIPT) -o $@ $(ARM_SOURCE) $(ARM_CFLAGS)
 
-$(OUT_DIR)/linux: $(POSIX_SOURCE)
-	$(CC) -o $(OUT_DIR)/linux $(POSIX_SOURCE) $(POSIX_CFLAGS)
+$(OUT_DIR)/$(NAME)-linux: $(POSIX_SOURCE)
+	$(CC) -o $@ $(POSIX_SOURCE) $(POSIX_CFLAGS)
 
 endif
 
-$(OUT_DIR)/app.bin: $(OUT_DIR)/app
+$(OUT_DIR)/%.bin: $(OUT_DIR)/%.elf
 	arm-none-eabi-objcopy -O binary $^ $@
 
 directories: $(OUT_DIR)
