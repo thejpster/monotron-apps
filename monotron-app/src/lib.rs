@@ -504,6 +504,15 @@ pub mod target {
             (tbl.map_line)(actual_scanline, drawn_scanline);
         }
 
+        /// Get the current cursor position
+        pub fn get_cursor() -> (Row, Col) {
+            let mut row = 0;
+            let mut col = 0;
+            let tbl = get_api();
+            (tbl.get_cursor)(&mut row as *mut u8, &mut col as *mut u8);
+            (Row(row), Col(col))
+        }
+
         /// Start playing a tone. It will continue.
         pub fn play<F>(frequency: F, channel: Channel, waveform: Waveform, volume: u8)
         where
@@ -754,6 +763,17 @@ pub mod target {
         pub fn map_line(actual_scanline: u16, drawn_scanline: u16) {
             if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
                 ctx.fb.map_line(actual_scanline, drawn_scanline);
+            }
+        }
+
+        /// Get the current cursor position
+        pub fn get_cursor() -> (Row, Col) {
+            use vga_framebuffer::BaseConsole;
+            if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
+                let p = ctx.fb.get_pos();
+                (Row(p.row.0), Col(p.col.0))
+            } else {
+                (Row(0), Col(0))
             }
         }
 
@@ -1031,6 +1051,18 @@ pub extern "C" fn read_char_at(row: u8, col: u8) -> u16 {
 /// C FFI for Host::map_line
 pub extern "C" fn map_line(actual_scanline: u16, drawn_scanline: u16) {
     Host::map_line(actual_scanline, drawn_scanline);
+}
+
+#[no_mangle]
+/// C FFI for Host::get_cursor
+pub extern "C" fn get_cursor(p_row: *mut u8, p_col: *mut u8) {
+    let (row, col) = Host::get_cursor();
+    if !p_row.is_null() {
+        unsafe { *p_row = row.0 }
+    }
+    if !p_col.is_null() {
+        unsafe { *p_col = col.0 }
+    }
 }
 
 #[no_mangle]
