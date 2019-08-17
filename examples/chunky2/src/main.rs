@@ -172,20 +172,21 @@ impl Fire {
     /// Draws a flame effect.
     /// Based on https://gist.github.com/msimpson/1096950.
     fn draw_fire(&mut self) {
-        const CHARS: [u8; 10] = [b' ', b'.', b':', b'^', b'*', b'x', b's', b'S', b'#', b'$'];
+        const CHARS: [u8; 10] = [
+            b' ', b'`', b':', b'^', b'*', b'x', b'\xB0', b'\xB1', b'\xB2', b'\xDB',
+        ];
         Host::move_cursor(monotron_app::Row(16), monotron_app::Col(0));
         // Seed the fire on the last line
         for _i in 0..5 {
-            let idx =
-                (Self::WIDTH * (Self::HEIGHT - 1)) + self.random_up_to(Self::WIDTH as u32) as usize;
+            let idx = (Self::WIDTH * Self::HEIGHT) + self.random_up_to(Self::WIDTH as u32) as usize;
             self.buffer[idx] = 65;
         }
         // Cascade the flames
-        for i in 0..Self::SIZE {
-            self.buffer[i] = (self.buffer[i]
-                + self.buffer[i + 1]
-                + self.buffer[i + Self::WIDTH]
-                + self.buffer[i + Self::WIDTH + 1])
+        for i in 0..self.buffer.len() {
+            self.buffer[i] = (self.buffer.get(i).unwrap_or(&0)
+                + self.buffer.get(i + 1).unwrap_or(&0)
+                + self.buffer.get(i + Self::WIDTH).unwrap_or(&0)
+                + self.buffer.get(i + Self::WIDTH + 1).unwrap_or(&0))
                 / 4;
             if self.buffer[i] > 15 {
                 Host::puts(b"\x1BB");
