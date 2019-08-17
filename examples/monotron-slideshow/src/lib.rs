@@ -60,6 +60,11 @@ pub enum Keypress {
     Nothing,
 }
 
+enum Padding {
+    ZeroPad(u8),
+    NoPad,
+}
+
 pub fn main(material: &[u8], footer: &[u8]) -> i32 {
     Host::set_cursor_visible(false);
     let mut ctx = Context {
@@ -113,7 +118,6 @@ fn draw_page(ctx: &Context) -> Keypress {
     let mut bullet_number = b'1';
     Host::puts(b"\x1BW\x1Bk\x1BZ");
     *ctx.centre.borrow_mut() = false;
-    footer(&ctx);
     for (idx, line) in page_start.split(|c| *c == b'\n').enumerate() {
         if is_break(line) {
             if idx != 0 {
@@ -130,10 +134,10 @@ fn draw_page(ctx: &Context) -> Keypress {
             }
         }
     }
-    wait_for_key(slide_left_default)
+    wait_for_key(ctx, slide_left_default)
 }
 
-fn wait_for_key(slide_left: i32) -> Keypress {
+fn wait_for_key(ctx: &Context, slide_left: i32) -> Keypress {
     let mut slide_left = slide_left;
     loop {
         if Host::kbhit() {
@@ -154,6 +158,8 @@ fn wait_for_key(slide_left: i32) -> Keypress {
         } else {
             // Wait for a frame
             Host::wfvbi();
+            // Update the timestamp
+            footer(ctx);
             if slide_left > 0 {
                 slide_left = slide_left - 1;
             }
@@ -195,10 +201,10 @@ fn write_line(
     bullet_number: &mut u8,
 ) -> Keypress {
     if line.starts_with(b"### ") {
-        let res = wait_for_key(slide_left_default);
+        let res = wait_for_key(ctx, slide_left_default);
         Host::puts(b"\x1B^   \x1B");
         Host::putchar(ctx.subheading);
-        let remainder = &line[2..];
+        let remainder = &line[4..];
         write_plain_line(ctx, remainder, true);
         Host::puts(b"\x1Bv   \x1B");
         Host::putchar(ctx.subheading);
@@ -209,7 +215,7 @@ fn write_line(
     } else if line.starts_with(b"## ") {
         Host::puts(b"\x1B^   \x1B");
         Host::putchar(ctx.heading_top);
-        let remainder = &line[1..];
+        let remainder = &line[3..];
         write_plain_line(ctx, remainder, true);
         Host::puts(b"\x1Bv   \x1B");
         Host::putchar(ctx.heading_bottom);
@@ -224,7 +230,7 @@ fn write_line(
         }
         Host::puts(b"\x1B^   \x1B");
         Host::putchar(ctx.title_top);
-        let remainder = &line[1..];
+        let remainder = &line[2..];
         write_plain_line(ctx, remainder, true);
         Host::puts(b"\x1Bv   \x1B");
         Host::putchar(ctx.title_bottom);
@@ -234,7 +240,7 @@ fn write_line(
         write_plain_line(ctx, &UNDERLINE[0..remainder.len()], true);
         Keypress::Nothing
     } else if line.starts_with(b"* ") {
-        let res = wait_for_key(slide_left_default);
+        let res = wait_for_key(ctx, slide_left_default);
         let remainder = &line[2..];
         Host::puts(b"     \x1B^\x1B");
         Host::putchar(ctx.bullet);
@@ -249,7 +255,7 @@ fn write_line(
         Host::putchar(b'\n');
         res
     } else if line.starts_with(b"1. ") {
-        let res = wait_for_key(slide_left_default);
+        let res = wait_for_key(ctx, slide_left_default);
         let remainder = &line[2..];
         Host::puts(b"     \x1B^\x1B");
         Host::putchar(ctx.bullet);
@@ -312,8 +318,8 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
         } else if has_escape {
             match ch {
                 b'^' => Host::puts(b"^"),
-                b'p' => print_num(ctx.page),
-                b'P' => print_num(ctx.num_pages),
+                b'p' => print_num(ctx.page as u16, Padding::NoPad),
+                b'P' => print_num(ctx.num_pages as u16, Padding::NoPad),
                 b'r' => Host::puts(b"\x1Br"),
                 b'g' => Host::puts(b"\x1Bg"),
                 b'b' => Host::puts(b"\x1Bb"),
@@ -342,6 +348,9 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
                 b'e' => {
                     *ctx.centre.borrow_mut() = true;
                 }
+                b'E' => {
+                    *ctx.centre.borrow_mut() = false;
+                }
                 _ => Host::putchar(b'X'),
             }
             has_escape = false;
@@ -365,11 +374,27 @@ fn write_plain_line(ctx: &Context, line: &[u8], newline: bool) {
 }
 
 fn footer(ctx: &Context) {
+    let old_centre = *ctx.centre.borrow();
+    *ctx.centre.borrow_mut() = false;
+    let (row, col) = Host::get_cursor();
     Host::move_cursor(Row(35), Col(0));
     write_plain_line(ctx, ctx.footer, false);
-    Host::move_cursor(Row(35), Col(36));
-    write_plain_line(ctx, b"Page ^p/^P", false);
-    Host::move_cursor(Row(0), Col(0));
+    Host::move_cursor(Row(35), Col(21));
+    let date_time = Host::gettime();
+    print_num(date_time.year_from_1970 as u16 + 1970, Padding::ZeroPad(4));
+    Host::putchar(b'-');
+    print_num(date_time.month as u16, Padding::ZeroPad(2));
+    Host::putchar(b'-');
+    print_num(date_time.days as u16, Padding::ZeroPad(2));
+    Host::putchar(b' ');
+    print_num(date_time.hours as u16, Padding::ZeroPad(2));
+    Host::putchar(b':');
+    print_num(date_time.minutes as u16, Padding::ZeroPad(2));
+    Host::putchar(b':');
+    print_num(date_time.seconds as u16, Padding::ZeroPad(2));
+    write_plain_line(ctx, b" ^p/^P", false);
+    Host::move_cursor(row, col);
+    *ctx.centre.borrow_mut() = old_centre;
 }
 
 fn count_pages(contents: &[u8]) -> u8 {
@@ -383,19 +408,36 @@ fn is_break(line: &[u8]) -> bool {
     line.starts_with(b"***") || line.starts_with(b"---") || line.starts_with(b"___")
 }
 
-fn print_num(number: u8) {
+fn print_num(number: u16, padding: Padding) {
     let mut number = number;
+    let mut padding_count = match padding {
+        Padding::ZeroPad(n) => n,
+        Padding::NoPad => 0,
+    };
+    if number >= 1000 {
+        let thousands = number / 1000;
+        Host::putchar(b'0' + thousands as u8);
+        number = number - (thousands * 1000);
+        padding_count = 4;
+    } else if padding_count >= 4 {
+        Host::putchar(b'0');
+    }
     if number >= 100 {
         let hundreds = number / 100;
-        Host::putchar(b'0' + hundreds);
+        Host::putchar(b'0' + hundreds as u8);
         number = number - (hundreds * 100);
+        padding_count = 3;
+    } else if padding_count >= 3 {
+        Host::putchar(b'0');
     }
     if number >= 10 {
         let tens = number / 10;
-        Host::putchar(b'0' + tens);
+        Host::putchar(b'0' + tens as u8);
         number = number - (tens * 10);
+    } else if padding_count >= 2 {
+        Host::putchar(b'0');
     }
-    Host::putchar(b'0' + number);
+    Host::putchar(b'0' + number as u8);
 }
 
 // End of file
