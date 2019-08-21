@@ -543,21 +543,32 @@ static void update_sound(void) {
 
 }
 
+/**
+ * Joystick handling is tricky.
+ *
+ * If you are going in direction UP, and you move the stick to UP-LEFT, you
+ * expect to go left, but you get UP because UP is processed before LEFT. If
+ * you are going LEFT and move to UP-LEFT, you expect to go UP.
+ */
 static char get_input(void) {
+    static uint8_t js_last = 0;
     char usercommand = 0;
     if (kbhit()) {
         usercommand = getchar();
     } else {
-        uint8_t js = get_joystick();
-        if (joystick_fire_pressed(js)) {
+        uint8_t js_now = get_joystick();
+        uint8_t js_changed = js_now ^ js_last;
+        uint8_t js_new = js_now & js_changed;
+        js_last = js_now;
+        if (joystick_fire_pressed(js_new)) {
             usercommand = 'p';
-        } else if (joystick_is_up(js)) {
+        } else if (joystick_is_up(js_new)) {
             usercommand = 'w';
-        } else if (joystick_is_down(js)) {
+        } else if (joystick_is_down(js_new)) {
             usercommand = 's';
-        } else if (joystick_is_left(js)) {
+        } else if (joystick_is_left(js_new)) {
             usercommand = 'a';
-        } else if (joystick_is_right(js)) {
+        } else if (joystick_is_right(js_new)) {
             usercommand = 'd';
         }
     }
@@ -577,12 +588,13 @@ static void start_music(void) {
 static void game_over(void) {
     pigfx_movecursor(FIELD_H / 2, (FIELD_W - 10) / 2);
     pigfx_print("GAME OVER!");
-    pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 31) / 2);
-    pigfx_print("Press 'p' or Fire to try again.");
     beep(880, 30, MAX_VOLUME);
     wait_note();
     beep(440, 60, MAX_VOLUME);
     wait_note();
+
+    pigfx_movecursor((FIELD_H / 2) + 1, (FIELD_W - 18) / 2);
+    pigfx_print("Press 'p' or Fire.");
 
     // Handle high score stuff.
 
@@ -613,11 +625,6 @@ static bool game(void) {
     pigfx_hide_cursor();
     splash_screen();
 
-    // Don't immediately exit the splash screen because the button is still held.
-    for(int i = 0; i < 30; i++) {
-        wait_frame();
-    }
-
     const char* colours = "RBCMYWG";
     const char* p_color = &colours[0];
 
@@ -625,6 +632,7 @@ static bool game(void) {
     int counter = 0;
     int shift = 1;
     int shift_dir = 1;
+
     for (char c = get_input(); ; c = get_input()) {
         if ((c == 'p') || (c == 'P')) {
             break;
@@ -688,14 +696,35 @@ static bool game(void) {
     initialize();
 
     while (1) {
-        if (update_snake() == 0) {
-            game_over();
-            return true;
+
+        // DELAY LOOP
+        uint8_t easiness;
+        if (score >= 250) {
+            easiness = 1;
+        } else if (score >= 200) {
+            easiness = 2;
+        } else if (score >= 150) {
+            easiness = 3;
+        } else if (score >= 100) {
+            easiness = 4;
+        } else if (score >= 50) {
+            easiness = 5;
+        } else {
+            easiness = 6;
+        }
+        char input = 0;
+        for(int i = 0; i < easiness; i++) {
+            input = get_input();
+            if (input != 0) {
+                // Update as soon as they move - don't make them wait
+                break;
+            }
+            wait_frame();
         }
 
         head_idx = snake_head.i * FIELD_W + snake_head.j;
 
-        switch(get_input()) {
+        switch(input) {
         case 'w':
         case 'W':
             if (field[head_idx] != DOWN_CHAR)
@@ -732,29 +761,16 @@ static bool game(void) {
             break;
         }
 
+        if (update_snake() == 0) {
+            game_over();
+            return true;
+        }
+
         // Only bip if nothing else playing
         if (sound_frames_remaining == 0) {
             beep(1000, 2, MAX_VOLUME / 4);
         }
 
-        // DELAY LOOP
-        uint8_t easiness;
-        if (score >= 250) {
-            easiness = 1;
-        } else if (score >= 200) {
-            easiness = 2;
-        } else if (score >= 150) {
-            easiness = 3;
-        } else if (score >= 100) {
-            easiness = 4;
-        } else if (score >= 50) {
-            easiness = 5;
-        } else {
-            easiness = 6;
-        }
-        for(int i = 0; i < easiness; i++) {
-            wait_frame();
-        }
     }
 }
 
