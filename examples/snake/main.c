@@ -787,6 +787,11 @@ int monotron_main(void) {
     while (game()) {
         // Carry on
     }
+    play(0, CHANNEL_0, WAVEFORM_SQUARE, 0);
+    play(0, CHANNEL_1, WAVEFORM_SQUARE, 0);
+    play(0, CHANNEL_2, WAVEFORM_SQUARE, 0);
+    puts("\x1BW\x1Bk\x1BZ");
+    font_normal();
     for (int scanline = 0; scanline < 576; scanline++) {
         map_line(scanline, scanline);
     }
