@@ -1,4 +1,4 @@
-EXAMPLES = intro accu2019 cch2019 oxidize2019 rustconf2019
+EXAMPLES = intro accu2019 cch2019 rustconf2019
 OUT_DIR = ./bin
 MARKDOWN_FILES = $(foreach _example, $(EXAMPLES), examples/$(_example).md)
 COMPRESSED_MARKDOWN_FILES = $(foreach _example, $(EXAMPLES), $(OUT_DIR)/$(_example).md)
