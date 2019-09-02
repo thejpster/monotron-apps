@@ -639,7 +639,7 @@ pub mod target {
     use std::sync::Mutex;
 
     lazy_static! {
-        static ref VIDEO_CONTEXT: Mutex<Option<sdl_window::Context<'static>>> = Mutex::new(None);
+        static ref VIDEO_CONTEXT: Mutex<Option<sdl_window::Context>> = Mutex::new(None);
     }
 
     impl std::fmt::Write for Host {
@@ -726,8 +726,8 @@ pub mod target {
         /// Move the cursor on the screen.
         pub fn move_cursor(row: Row, col: Col) {
             use vga_framebuffer::BaseConsole;
-            if col.0 as usize <= vga_framebuffer::TEXT_MAX_COL
-                && row.0 as usize <= vga_framebuffer::TEXT_MAX_ROW
+            if col.0 as usize <= 47
+                && row.0 as usize <= 36
             {
                 if let Some(ref mut ctx) = *VIDEO_CONTEXT.lock().unwrap() {
                     let p = vga_framebuffer::Position::new(
