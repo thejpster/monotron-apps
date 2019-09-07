@@ -2,8 +2,8 @@ use sdl2;
 use std::collections::VecDeque;
 use vga_framebuffer;
 
-pub struct Context<'a> {
-    pub fb: vga_framebuffer::FrameBuffer<'a, FakeHardware>,
+pub struct Context {
+    pub fb: vga_framebuffer::FrameBuffer<FakeHardware>,
     pub keypresses: VecDeque<u8>,
 }
 
@@ -16,14 +16,11 @@ pub struct FakeHardware {
 // We need to do this to put a Context in a static. But is this a good idea?
 // Certainly I don't recommend creating threads in Monotron programs (not that
 // Monotron can do that anyway?!)
-unsafe impl<'a> Send for Context<'a> {}
+unsafe impl Send for Context {}
 
 impl vga_framebuffer::Hardware for FakeHardware {
-    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
-        println!(
-            "width={}, sync_end={}, line_start={}, clock_rate={}",
-            width, sync_end, line_start, clock_rate
-        );
+    fn configure(&mut self, info: &vga_framebuffer::ModeInfo) {
+        println!("Video Timing: {:?}", info);
     }
 
     fn vsync_on(&mut self) {}
@@ -58,8 +55,8 @@ impl vga_framebuffer::Hardware for FakeHardware {
     }
 }
 
-impl<'a> Context<'a> {
-    pub fn new() -> Context<'a> {
+impl Context {
+    pub fn new() -> Context {
         let sdl_context = sdl2::init().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem

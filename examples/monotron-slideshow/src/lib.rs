@@ -94,9 +94,16 @@ pub fn main(material: &[u8], footer: &[u8]) -> i32 {
                 Host::puts(b"Thanks for watching!\n");
                 return 0;
             }
-            Keypress::Nothing | Keypress::Down | Keypress::Timeout => {
+            Keypress::Nothing | Keypress::Down => {
                 if ctx.page < ctx.num_pages {
                     ctx.page += 1;
+                }
+            }
+            Keypress::Timeout => {
+                if ctx.page < ctx.num_pages {
+                    ctx.page += 1;
+                } else {
+                    ctx.page = 1;
                 }
             }
             Keypress::Up => {
@@ -110,7 +117,7 @@ pub fn main(material: &[u8], footer: &[u8]) -> i32 {
 
 fn draw_page(ctx: &Context) -> Keypress {
     // Skip through material to find page
-    let slide_left_default = -1;
+    let slide_left_default = 120;
     let page_start = match find_page(ctx) {
         Some(p) => p,
         None => return Keypress::Error,
@@ -248,6 +255,16 @@ fn write_line(
         Host::putchar(ctx.default);
         write_plain_line(ctx, remainder, true);
         Host::puts(b"     \x1Bv\x1B");
+        Host::putchar(ctx.bullet);
+        Host::puts(b"\x07\x1B");
+        Host::putchar(ctx.default);
+        write_plain_line(ctx, remainder, true);
+        Host::putchar(b'\n');
+        res
+    } else if line.starts_with(b"- ") {
+        let res = wait_for_key(ctx, slide_left_default);
+        let remainder = &line[2..];
+        Host::puts(b"     \x1B");
         Host::putchar(ctx.bullet);
         Host::puts(b"\x07\x1B");
         Host::putchar(ctx.default);
